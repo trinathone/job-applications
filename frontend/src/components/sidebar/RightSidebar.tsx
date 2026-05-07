@@ -13,7 +13,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 export default function RightSidebar() {
   const [tab, setTab] = useState<Tab>("today");
   return (
-    <div className="flex flex-col h-full" style={{background:"#070910"}}>
+    <div className="flex flex-col h-full min-h-[200px]" style={{background:"#070910"}}>
       <div className="flex shrink-0" style={{borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
         {TABS.map(t=>(
           <button key={t.id} onClick={()=>setTab(t.id)}

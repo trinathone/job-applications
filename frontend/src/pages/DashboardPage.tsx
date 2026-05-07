@@ -81,43 +81,40 @@ export default function DashboardPage() {
   );
 
   return (
-    <div className="flex h-full">
-      <div className="flex-1 flex flex-col min-w-0">
+    <div className="flex h-full flex-col sm:flex-row">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0">
         {/* Header */}
-        <header className="px-5 py-3.5 flex items-center justify-between shrink-0" style={{borderBottom:"1px solid rgba(255,255,255,0.05)",background:"rgba(10,12,22,0.8)",backdropFilter:"blur(12px)"}}>
-          <div>
-            <p className="text-xs text-gray-500">
+        <header className="px-4 py-3 flex items-center justify-between shrink-0 gap-2"
+          style={{borderBottom:"1px solid rgba(255,255,255,0.05)",background:"rgba(10,12,22,0.9)",backdropFilter:"blur(12px)"}}>
+          <div className="min-w-0">
+            <p className="text-[10px] text-gray-500 hidden sm:block">
               {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
             </p>
-            <h1 className="text-sm font-semibold text-gray-100">
+            <h1 className="text-sm font-semibold text-gray-100 flex items-center gap-2 flex-wrap">
               {isLoading ? "Loading…" : `${jobs.length} jobs`}
               {newJobCount > 0 && (
-                <button
-                  onClick={() => { refetch(); resetNewCount(); }}
-                  className="ml-2 text-xs text-blue-400 hover:text-blue-300"
-                >
+                <button onClick={() => { refetch(); resetNewCount(); }}
+                  className="text-xs text-blue-400 hover:text-blue-300 font-medium">
                   +{newJobCount} new ↑
                 </button>
               )}
             </h1>
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setFilter({ sortBy: "date", datePosted: "all" })}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors ${
-                filters.sortBy === "date"
-                  ? "bg-green-500/20 text-green-400 border border-green-500/40"
-                  : "bg-gray-800 text-gray-400 border border-gray-700 hover:border-gray-500"
-              }`}
-              title="Sort by newest — be first to apply"
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${filters.sortBy === "date" ? "bg-green-400 animate-pulse" : "bg-gray-600"}`} />
-              Newest first
+          <div className="flex items-center gap-2 shrink-0">
+            <button onClick={() => setFilter({ sortBy: "date", datePosted: "all" })}
+              className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all"
+              style={filters.sortBy === "date" ? {
+                background:"rgba(34,197,94,0.1)",color:"#4ade80",border:"1px solid rgba(34,197,94,0.25)"
+              } : {
+                background:"rgba(255,255,255,0.04)",color:"rgba(148,163,184,0.5)",border:"1px solid rgba(255,255,255,0.06)"
+              }}>
+              <span className={`w-1.5 h-1.5 rounded-full ${filters.sortBy==="date" ? "bg-green-400 animate-pulse" : "bg-gray-600"}`}/>
+              <span className="hidden sm:inline">Newest</span>
             </button>
-            <div className="flex items-center gap-2 text-xs text-gray-500">
-              <kbd className="px-1 py-0.5 bg-gray-800 rounded">A</kbd> Apply
-              <kbd className="px-1 py-0.5 bg-gray-800 rounded">S</kbd> Skip
-              <kbd className="px-1 py-0.5 bg-gray-800 rounded">N</kbd> Next
+            <div className="hidden md:flex items-center gap-1.5 text-[10px]" style={{color:"rgba(148,163,184,0.4)"}}>
+              <kbd className="px-1.5 py-0.5 rounded" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.07)"}}>A</kbd>
+              <kbd className="px-1.5 py-0.5 rounded" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.07)"}}>S</kbd>
+              <kbd className="px-1.5 py-0.5 rounded" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.07)"}}>N</kbd>
             </div>
           </div>
         </header>
@@ -125,18 +122,16 @@ export default function DashboardPage() {
         <FilterBar total={jobs.length} showing={filteredJobs.length} />
 
         <div className="flex-1 flex min-h-0">
-          <div className="w-full flex flex-col min-h-0 relative h-full">
+          <div className="w-full flex flex-col min-h-0">
             <div className="flex-1 min-h-0">
               <JobFeed jobs={filteredJobs} loading={isLoading} />
             </div>
             {hasMore && (
-              <div className="border-t border-gray-800 px-4 py-2 bg-gray-950 shrink-0">
-                <button
-                  onClick={loadMore}
-                  disabled={loadingMore}
-                  className="w-full py-1.5 text-xs text-blue-400 hover:text-blue-300 disabled:opacity-50"
-                >
-                  {loadingMore ? "Loading…" : `Load more jobs (${jobs.length} loaded)`}
+              <div className="px-4 py-2 shrink-0" style={{borderTop:"1px solid rgba(255,255,255,0.05)"}}>
+                <button onClick={loadMore} disabled={loadingMore}
+                  className="w-full py-1.5 text-xs font-medium transition-colors disabled:opacity-40"
+                  style={{color:"#60a5fa"}}>
+                  {loadingMore ? "Loading…" : `Load more (${jobs.length} loaded)`}
                 </button>
               </div>
             )}
@@ -144,7 +139,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <aside className="w-60 shrink-0 border-l border-gray-800">
+      <aside className="w-full sm:w-56 shrink-0 sm:max-h-full overflow-hidden border-t sm:border-t-0 sm:border-l"
+        style={{borderColor:"rgba(255,255,255,0.05)"}}>
         <RightSidebar />
       </aside>
     </div>
