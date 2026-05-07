@@ -7,12 +7,13 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from jam.api.deps import get_current_user, get_db
+from jam.config import settings
 from jam.models import Application, User
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -30,11 +31,15 @@ class UserSummary(BaseModel):
     model_config = {"from_attributes": True}
 
 
-async def _require_admin(current_user: User = Depends(get_current_user)) -> User:
-    from jam.config import settings
+async def _require_admin(
+    current_user: User = Depends(get_current_user),
+    x_admin_password: str | None = Header(default=None),
+) -> User:
     admins = {e.strip().lower() for e in settings.admin_emails if e.strip()}
-    if admins and current_user.email.lower() not in admins:
+    if not admins or current_user.email.lower() not in admins:
         raise HTTPException(status_code=403, detail="Admin access required.")
+    if settings.admin_panel_password and x_admin_password != settings.admin_panel_password:
+        raise HTTPException(status_code=403, detail="Admin password required.")
     return current_user
 
 

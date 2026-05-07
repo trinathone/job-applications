@@ -70,7 +70,14 @@ class Settings(BaseSettings):
     theirstack_api_key: str = ""
 
     # ── Admin ────────────────────────────────────────────────────────────────
-    admin_emails: list[str] = Field(default=[], description="Emails allowed to access /api/admin/*")
+    admin_emails: list[str] = Field(
+        default=["sreenathomg@gmail.com"],
+        description="Emails allowed to access /api/admin/*",
+    )
+    admin_panel_password: str = Field(
+        default="",
+        description="Optional second admin password required via X-Admin-Password.",
+    )
 
     # ── Notifications ─────────────────────────────────────────────────────────
     telegram_bot_token: str = ""

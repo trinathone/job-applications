@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { FormEvent, useState } from "react";
 import client from "../api/client";
 
 interface UserSummary {
@@ -21,11 +22,49 @@ function timeAgo(iso: string): string {
 }
 
 export default function AdminPage() {
+  const [password, setPassword] = useState(() => sessionStorage.getItem("jam-admin-pass") ?? "");
+  const [draft, setDraft] = useState("");
+  const unlocked = password.length > 0;
   const { data, isLoading, error } = useQuery<UserSummary[]>({
-    queryKey: ["admin-users"],
-    queryFn: async () => (await client.get("/admin/users")).data,
+    queryKey: ["admin-users", unlocked],
+    enabled: unlocked,
+    queryFn: async () => (
+      await client.get("/admin/users", { headers: { "X-Admin-Password": password } })
+    ).data,
     retry: false,
   });
+
+  function unlock(e: FormEvent) {
+    e.preventDefault();
+    sessionStorage.setItem("jam-admin-pass", draft);
+    setPassword(draft);
+  }
+
+  if (!unlocked) {
+    return (
+      <div className="page-container" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <form onSubmit={unlock} className="card" style={{ width: 340, padding: 20 }}>
+          <h1 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-1)", marginBottom: 12 }}>
+            Admin
+          </h1>
+          <input
+            type="password"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="Admin password"
+            style={{
+              width: "100%", padding: "10px 12px", borderRadius: 8,
+              background: "var(--surface-2)", border: "1px solid var(--border)",
+              color: "var(--text-1)", marginBottom: 12,
+            }}
+          />
+          <button className="btn-primary" style={{ width: "100%", justifyContent: "center" }}>
+            Enter
+          </button>
+        </form>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -41,7 +80,19 @@ export default function AdminPage() {
     const msg = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
     return (
       <div className="page-container" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <p style={{ fontSize: 13, color: "var(--text-2)" }}>{msg || "Access denied or API error."}</p>
+        <div style={{ textAlign: "center" }}>
+          <p style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 12 }}>{msg || "Access denied or API error."}</p>
+          <button
+            onClick={() => {
+              sessionStorage.removeItem("jam-admin-pass");
+              setPassword("");
+              setDraft("");
+            }}
+            className="btn-ghost"
+          >
+            Try again
+          </button>
+        </div>
       </div>
     );
   }

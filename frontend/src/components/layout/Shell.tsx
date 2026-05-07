@@ -295,6 +295,33 @@ export default function Shell() {
       }}>
         <Outlet />
       </main>
+
+      {isAdmin && (
+        <NavLink
+          to="/admin"
+          title="Admin"
+          style={{
+            position: "fixed",
+            right: 18,
+            bottom: 18,
+            zIndex: 70,
+            padding: "12px 16px",
+            borderRadius: 10,
+            background: "var(--text-1)",
+            color: "var(--bg)",
+            border: "1px solid var(--border-2)",
+            boxShadow: "0 12px 40px rgba(0,0,0,0.45)",
+            fontFamily: "JetBrains Mono, monospace",
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            textDecoration: "none",
+            textTransform: "uppercase",
+          }}
+        >
+          Admin
+        </NavLink>
+      )}
     </div>
   );
 }
