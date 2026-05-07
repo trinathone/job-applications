@@ -2,7 +2,7 @@ import axios, { AxiosError } from "axios";
 import { useAuthStore } from "../store/authStore";
 
 const client = axios.create({
-  baseURL: "/api",
+  baseURL: (import.meta.env.VITE_API_URL as string | undefined) ?? "/api",
   headers: { "Content-Type": "application/json" },
   timeout: 15_000,
 });
