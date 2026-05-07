@@ -36,6 +36,16 @@ class LatexResponse(BaseModel):
     latex: str
 
 
+class TestKeyRequest(BaseModel):
+    provider: Literal["anthropic", "openai", "gemini"]
+    api_key: str
+
+
+class TestKeyResponse(BaseModel):
+    ok: bool
+    message: str
+
+
 def _strip_fences(text: str) -> str:
     lines = text.strip().splitlines()
     if lines and lines[0].startswith("```"):
@@ -124,3 +134,50 @@ async def generate_latex(
         raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post("/test-key", response_model=TestKeyResponse)
+async def test_api_key(
+    req: TestKeyRequest,
+    _user: User = Depends(get_current_user),
+) -> TestKeyResponse:
+    """Send a minimal request to verify the API key works."""
+    key = req.api_key.strip()
+    if not key:
+        return TestKeyResponse(ok=False, message="No key provided.")
+    try:
+        if req.provider == "anthropic":
+            import anthropic
+            c = anthropic.AsyncAnthropic(api_key=key)
+            msg = await c.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=5,
+                messages=[{"role": "user", "content": "hi"}],
+            )
+            return TestKeyResponse(ok=True, message=f"Claude OK — model {msg.model}")
+
+        elif req.provider == "openai":
+            from openai import AsyncOpenAI
+            c = AsyncOpenAI(api_key=key)
+            models = await c.models.list()
+            names = [m.id for m in models.data[:3]]
+            return TestKeyResponse(ok=True, message=f"OpenAI OK — {', '.join(names)}…")
+
+        elif req.provider == "gemini":
+            from google import genai
+            c = genai.Client(api_key=key)
+            resp = await c.aio.models.generate_content(
+                model="gemini-2.0-flash",
+                contents="hi",
+            )
+            return TestKeyResponse(ok=True, message=f"Gemini OK — {resp.text[:30].strip()}")
+
+        return TestKeyResponse(ok=False, message="Unknown provider.")
+    except Exception as exc:
+        msg = str(exc)
+        # Extract clean error message
+        if "invalid_api_key" in msg or "Invalid API" in msg or "API key" in msg.lower():
+            return TestKeyResponse(ok=False, message="Invalid API key.")
+        if "quota" in msg.lower() or "billing" in msg.lower():
+            return TestKeyResponse(ok=False, message="Key valid but quota exceeded.")
+        return TestKeyResponse(ok=False, message=msg[:120])

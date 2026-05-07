@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import CursorTrail from "./components/ui/CursorTrail";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
 import Shell from "./components/layout/Shell";
 import DashboardPage from "./pages/DashboardPage";
@@ -12,6 +13,7 @@ import AdminPage from "./pages/AdminPage";
 export default function App() {
   return (
     <BrowserRouter>
+      <CursorTrail />
       <Routes>
         {/* Public */}
         <Route path="/login" element={<LoginPage />} />

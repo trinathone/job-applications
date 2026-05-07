@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import client from "../api/client";
 
 type Provider = "anthropic" | "openai" | "gemini";
@@ -25,10 +25,12 @@ export default function ResumeBuilderPage() {
   const [writingRules, setWritingRules]   = useState("");
   const [jobDescription, setJobDescription] = useState("");
 
-  const [latex, setLatex]   = useState("");
+  const [latex, setLatex]     = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError]   = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [error, setError]     = useState<string | null>(null);
+  const [copied, setCopied]   = useState(false);
+  const [testState, setTestState] = useState<"idle" | "testing" | "ok" | "fail">("idle");
+  const [testMsg, setTestMsg]     = useState("");
   const outputRef = useRef<HTMLDivElement>(null);
 
   // Persist brain selection
@@ -37,6 +39,21 @@ export default function ResumeBuilderPage() {
   }, [provider, apiKey]);
 
   const activeProvider = PROVIDERS.find((p) => p.id === provider)!;
+
+  // Reset test state when key or provider changes
+  useEffect(() => { setTestState("idle"); setTestMsg(""); }, [provider, apiKey]);
+
+  const testKey = useCallback(async () => {
+    if (!apiKey.trim()) { setTestState("fail"); setTestMsg("Enter a key first."); return; }
+    setTestState("testing"); setTestMsg("");
+    try {
+      const res = await client.post("/resume/test-key", { provider, api_key: apiKey });
+      if (res.data.ok) { setTestState("ok"); setTestMsg(res.data.message); }
+      else             { setTestState("fail"); setTestMsg(res.data.message); }
+    } catch {
+      setTestState("fail"); setTestMsg("Connection error.");
+    }
+  }, [provider, apiKey]);;
 
   async function generate() {
     if (!resumeText.trim() || !jobDescription.trim()) {
@@ -110,31 +127,55 @@ export default function ResumeBuilderPage() {
             ))}
           </div>
 
-          {/* API Key input */}
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
+          {/* API Key input + Test button */}
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            <div className="relative flex-1 min-w-0">
               <input
                 type={keyVisible ? "text" : "password"}
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder={`Your ${activeProvider.label} key — ${activeProvider.placeholder}`}
-                className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-600 font-mono focus:outline-none focus:border-blue-500 pr-20"
+                className="w-full rounded-lg px-3 py-2 text-sm font-mono focus:outline-none pr-16"
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  border: testState === "ok"   ? "1px solid rgba(34,197,94,0.5)"
+                        : testState === "fail" ? "1px solid rgba(239,68,68,0.5)"
+                        : "1px solid rgba(255,255,255,0.08)",
+                  color: "#e2e8f0",
+                }}
               />
-              <button
-                onClick={() => setKeyVisible((v) => !v)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 hover:text-gray-300 px-2 py-0.5"
-              >
+              <button onClick={() => setKeyVisible(v => !v)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] px-1.5 py-0.5 rounded"
+                style={{color:"rgba(148,163,184,0.5)"}}>
                 {keyVisible ? "hide" : "show"}
               </button>
             </div>
-            {apiKey && (
-              <span className={`text-xs font-medium ${activeProvider.color.split(" ")[1]}`}>
-                key set
-              </span>
-            )}
+
+            {/* Test button */}
+            <button onClick={testKey} disabled={testState === "testing" || !apiKey.trim()}
+              className="shrink-0 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-200 disabled:opacity-40 flex items-center gap-1.5"
+              style={testState === "ok"   ? { background:"rgba(34,197,94,0.12)",  color:"#4ade80",  border:"1px solid rgba(34,197,94,0.3)"  }
+                   : testState === "fail" ? { background:"rgba(239,68,68,0.1)",   color:"#f87171",  border:"1px solid rgba(239,68,68,0.25)" }
+                   : testState === "testing" ? { background:"rgba(99,102,241,0.12)", color:"#a5b4fc", border:"1px solid rgba(99,102,241,0.3)" }
+                   : { background:"rgba(255,255,255,0.05)", color:"rgba(148,163,184,0.7)", border:"1px solid rgba(255,255,255,0.08)" }}>
+              {testState === "testing" && (
+                <span className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin"/>
+              )}
+              {testState === "ok"   && "✓"}
+              {testState === "fail" && "✗"}
+              {testState === "testing" ? "Testing…" : testState === "ok" ? "Valid" : testState === "fail" ? "Failed" : "Test key"}
+            </button>
           </div>
-          <p className="text-xs text-gray-600">
-            Key is stored in your browser only — never sent to our server in plaintext (it goes directly to the AI provider via our API).
+
+          {/* Test result message */}
+          {testMsg && (
+            <p className="text-xs" style={{color: testState === "ok" ? "#4ade80" : "#f87171"}}>
+              {testMsg}
+            </p>
+          )}
+
+          <p className="text-xs" style={{color:"rgba(100,116,139,0.5)"}}>
+            Key stored in your browser only — never logged on the server.
           </p>
         </div>
 
