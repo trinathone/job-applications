@@ -2,12 +2,10 @@ import { Link } from "react-router-dom";
 
 export default function NotFoundPage() {
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-4">
-      <p className="text-5xl font-bold text-gray-700">404</p>
-      <p className="text-gray-400">Page not found</p>
-      <Link to="/dashboard" className="text-sm text-blue-400 hover:text-blue-300">
-        ← Back to dashboard
-      </Link>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 16 }}>
+      <p style={{ fontSize: 48, fontWeight: 700, color: "var(--text-3)", fontFamily: "JetBrains Mono, monospace" }}>404</p>
+      <p style={{ fontSize: 14, color: "var(--text-4)" }}>Page not found</p>
+      <Link to="/dashboard" style={{ fontSize: 13, color: "var(--text-2)" }}>← Back to dashboard</Link>
     </div>
   );
 }

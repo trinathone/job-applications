@@ -25,3 +25,17 @@ export async function register(
   });
   return data;
 }
+
+export async function requestOtp(email: string): Promise<void> {
+  await client.post("/auth/otp/request", { email });
+}
+
+export async function verifyOtp(email: string, code: string): Promise<TokenOut> {
+  const { data } = await client.post<TokenOut>("/auth/otp/verify", { email, code });
+  return data;
+}
+
+export async function googleAuth(credential: string): Promise<TokenOut> {
+  const { data } = await client.post<TokenOut>("/auth/google", { credential });
+  return data;
+}

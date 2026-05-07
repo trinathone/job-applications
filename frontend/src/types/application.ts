@@ -19,4 +19,8 @@ export interface Application {
   got_response: boolean | null;
   created_at: string;
   updated_at: string;
+  // Enriched job fields (populated on GET /applications)
+  job_title: string | null;
+  job_company_name: string | null;
+  job_url: string | null;
 }

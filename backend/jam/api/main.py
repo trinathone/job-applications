@@ -37,9 +37,10 @@ async def lifespan(app: FastAPI):
         await conn.execute(text("SELECT 1"))
 
     # Create any new tables that aren't in the Alembic migration yet
-    from jam.models import Base, TailorSession  # noqa: F401
+    from jam.models import Base, OtpCode, TailorSession  # noqa: F401
     async with engine.begin() as conn:
         await conn.run_sync(TailorSession.__table__.create, checkfirst=True)
+        await conn.run_sync(OtpCode.__table__.create, checkfirst=True)
 
     logger.info("app_startup", environment=settings.environment)
 

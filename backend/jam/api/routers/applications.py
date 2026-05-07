@@ -17,9 +17,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from jam.api.deps import get_current_user, get_db
-from jam.models import Application, User
+from jam.models import Application, Job, User
 from jam.monitoring.metrics import APPLICATIONS_TOTAL
 from jam.schemas import ApplicationCreate, ApplicationOut, ApplicationUpdate
 
@@ -108,12 +109,29 @@ async def list_applications(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[ApplicationOut]:
-    """List all applications for the authenticated user, newest first."""
-    q = select(Application).where(Application.user_id == current_user.id)
+    """List all applications for the authenticated user, newest first.
+    Job title, company name, and URL are eager-loaded for display."""
+
+    q = (
+        select(Application)
+        .options(
+            joinedload(Application.job).joinedload(Job.company)
+        )
+        .where(Application.user_id == current_user.id)
+    )
     if status:
         q = q.where(Application.status == status)
     q = q.order_by(Application.updated_at.desc())
 
     result = await db.execute(q)
-    apps = result.scalars().all()
-    return [ApplicationOut.model_validate(a) for a in apps]
+    apps = result.unique().scalars().all()
+
+    out = []
+    for a in apps:
+        row = ApplicationOut.model_validate(a)
+        if a.job:
+            row.job_title        = a.job.title
+            row.job_url          = a.job.url
+            row.job_company_name = a.job.company.name if a.job.company else None
+        out.append(row)
+    return out

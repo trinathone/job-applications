@@ -3,10 +3,10 @@ import client from "../api/client";
 
 type Provider = "anthropic" | "openai" | "gemini";
 
-const PROVIDERS: { id: Provider; label: string; placeholder: string; color: string }[] = [
-  { id: "anthropic", label: "Claude (Anthropic)", placeholder: "sk-ant-...", color: "border-orange-500 text-orange-400" },
-  { id: "openai",    label: "GPT-4o (OpenAI)",    placeholder: "sk-...",     color: "border-green-500 text-green-400" },
-  { id: "gemini",    label: "Gemini (Google)",     placeholder: "AIza...",    color: "border-blue-500 text-blue-400" },
+const PROVIDERS: { id: Provider; label: string; placeholder: string }[] = [
+  { id: "anthropic", label: "Claude (Anthropic)", placeholder: "sk-ant-..." },
+  { id: "openai",    label: "GPT-4o (OpenAI)",    placeholder: "sk-..."     },
+  { id: "gemini",    label: "Gemini (Google)",     placeholder: "AIza..."    },
 ];
 
 const STORAGE_KEY = "ja-resume-brain";
@@ -21,8 +21,8 @@ export default function ResumeBuilderPage() {
   const [apiKey, setApiKey]     = useState(saved.key || "");
   const [keyVisible, setKeyVisible] = useState(false);
 
-  const [resumeText, setResumeText]       = useState("");
-  const [writingRules, setWritingRules]   = useState("");
+  const [resumeText, setResumeText]         = useState("");
+  const [writingRules, setWritingRules]     = useState("");
   const [jobDescription, setJobDescription] = useState("");
 
   const [latex, setLatex]     = useState("");
@@ -33,14 +33,12 @@ export default function ResumeBuilderPage() {
   const [testMsg, setTestMsg]     = useState("");
   const outputRef = useRef<HTMLDivElement>(null);
 
-  // Persist brain selection
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ provider, key: apiKey }));
   }, [provider, apiKey]);
 
   const activeProvider = PROVIDERS.find((p) => p.id === provider)!;
 
-  // Reset test state when key or provider changes
   useEffect(() => { setTestState("idle"); setTestMsg(""); }, [provider, apiKey]);
 
   const testKey = useCallback(async () => {
@@ -53,7 +51,7 @@ export default function ResumeBuilderPage() {
     } catch {
       setTestState("fail"); setTestMsg("Connection error.");
     }
-  }, [provider, apiKey]);;
+  }, [provider, apiKey]);
 
   async function generate() {
     if (!resumeText.trim() || !jobDescription.trim()) {
@@ -91,36 +89,73 @@ export default function ResumeBuilderPage() {
     setTimeout(() => setCopied(false), 2000);
   }
 
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    background: "var(--surface)",
+    border: "1px solid var(--border)",
+    borderRadius: 8,
+    padding: "10px 12px",
+    fontSize: 12,
+    fontFamily: "JetBrains Mono, monospace",
+    color: "var(--text-2)",
+    resize: "vertical",
+    outline: "none",
+    lineHeight: 1.6,
+  };
+
+  const labelStyle: React.CSSProperties = {
+    fontFamily: "JetBrains Mono, monospace",
+    fontSize: 9, fontWeight: 600,
+    letterSpacing: "0.08em", textTransform: "uppercase",
+    color: "var(--text-4)", marginBottom: 6,
+  };
+
+  const testBorder =
+    testState === "ok"      ? "var(--border-2)" :
+    testState === "fail"    ? "var(--border-2)" :
+    "var(--border)";
+
+  const testBtnStyle: React.CSSProperties =
+    testState === "ok"      ? { background: "var(--surface-2)", color: "var(--text-1)", border: "1px solid var(--border-2)" } :
+    testState === "fail"    ? { background: "var(--surface-2)", color: "var(--text-2)", border: "1px solid var(--border-2)" } :
+    testState === "testing" ? { background: "var(--surface-2)", color: "var(--text-2)", border: "1px solid var(--border)"  } :
+    { background: "var(--surface-2)", color: "var(--text-3)", border: "1px solid var(--border)" };
+
   return (
-    <div className="h-full overflow-y-auto bg-gray-950">
-      <div className="max-w-7xl mx-auto px-6 py-6 space-y-5">
+    <div className="page-container">
+      <div style={{ maxWidth: 1080, margin: "0 auto", padding: "24px 24px 64px", display: "flex", flexDirection: "column", gap: 20 }}>
 
         {/* Header */}
         <div>
-          <h1 className="text-lg font-semibold text-gray-100">Resume Builder</h1>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", letterSpacing: "-0.02em", marginBottom: 4 }}>
+            Resume Builder
+          </h1>
+          <p style={{ fontSize: 12, color: "var(--text-3)" }}>
             Choose your AI brain, paste resume + rules + JD — get LaTeX ready to compile.
           </p>
         </div>
 
-        {/* ── Brain selector ── */}
-        <div className="bg-gray-900 border border-gray-700 rounded-xl p-4 space-y-3">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-sm font-semibold text-gray-200">Brain</span>
-            <span className="text-xs text-gray-500">— choose which AI writes your resume</span>
+        {/* Brain selector */}
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>Brain</span>
+            <span style={{ fontSize: 11, color: "var(--text-4)" }}>— choose which AI writes your resume</span>
           </div>
 
           {/* Provider tabs */}
-          <div className="flex gap-2 flex-wrap">
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {PROVIDERS.map((p) => (
               <button
                 key={p.id}
                 onClick={() => setProvider(p.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                  provider === p.id
-                    ? `${p.color} bg-gray-800`
-                    : "border-gray-700 text-gray-500 hover:border-gray-500 hover:text-gray-300"
-                }`}
+                style={{
+                  padding: "5px 12px", borderRadius: 6, fontSize: 11, fontWeight: 500,
+                  fontFamily: "JetBrains Mono, monospace",
+                  background: provider === p.id ? "var(--surface-3)" : "transparent",
+                  color: provider === p.id ? "var(--text-1)" : "var(--text-3)",
+                  border: provider === p.id ? "1px solid var(--border-2)" : "1px solid var(--border)",
+                  transition: "all 0.1s",
+                }}
               >
                 {p.label}
               </button>
@@ -128,128 +163,122 @@ export default function ResumeBuilderPage() {
           </div>
 
           {/* API Key input + Test button */}
-          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-            <div className="relative flex-1 min-w-0">
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ position: "relative", flex: 1 }}>
               <input
                 type={keyVisible ? "text" : "password"}
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder={`Your ${activeProvider.label} key — ${activeProvider.placeholder}`}
-                className="w-full rounded-lg px-3 py-2 text-sm font-mono focus:outline-none pr-16"
                 style={{
-                  background: "rgba(255,255,255,0.04)",
-                  border: testState === "ok"   ? "1px solid rgba(34,197,94,0.5)"
-                        : testState === "fail" ? "1px solid rgba(239,68,68,0.5)"
-                        : "1px solid rgba(255,255,255,0.08)",
-                  color: "#e2e8f0",
+                  ...inputStyle,
+                  paddingRight: 48,
+                  border: `1px solid ${testBorder}`,
+                  resize: "none",
+                  fontFamily: "JetBrains Mono, monospace",
+                  fontSize: 12,
                 }}
               />
-              <button onClick={() => setKeyVisible(v => !v)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] px-1.5 py-0.5 rounded"
-                style={{color:"rgba(148,163,184,0.5)"}}>
+              <button
+                onClick={() => setKeyVisible(v => !v)}
+                style={{
+                  position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
+                  fontFamily: "JetBrains Mono, monospace", fontSize: 9,
+                  color: "var(--text-4)", background: "none", border: "none",
+                  letterSpacing: "0.06em", textTransform: "uppercase",
+                }}
+              >
                 {keyVisible ? "hide" : "show"}
               </button>
             </div>
 
-            {/* Test button */}
-            <button onClick={testKey} disabled={testState === "testing" || !apiKey.trim()}
-              className="shrink-0 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-200 disabled:opacity-40 flex items-center gap-1.5"
-              style={testState === "ok"   ? { background:"rgba(34,197,94,0.12)",  color:"#4ade80",  border:"1px solid rgba(34,197,94,0.3)"  }
-                   : testState === "fail" ? { background:"rgba(239,68,68,0.1)",   color:"#f87171",  border:"1px solid rgba(239,68,68,0.25)" }
-                   : testState === "testing" ? { background:"rgba(99,102,241,0.12)", color:"#a5b4fc", border:"1px solid rgba(99,102,241,0.3)" }
-                   : { background:"rgba(255,255,255,0.05)", color:"rgba(148,163,184,0.7)", border:"1px solid rgba(255,255,255,0.08)" }}>
+            <button
+              onClick={testKey}
+              disabled={testState === "testing" || !apiKey.trim()}
+              style={{
+                ...testBtnStyle,
+                flexShrink: 0, padding: "7px 14px", borderRadius: 6,
+                fontFamily: "JetBrains Mono, monospace",
+                fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase",
+                display: "flex", alignItems: "center", gap: 6, opacity: !apiKey.trim() ? 0.4 : 1,
+              }}
+            >
               {testState === "testing" && (
-                <span className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin"/>
+                <span className="animate-spin" style={{
+                  display: "inline-block", width: 10, height: 10,
+                  border: "2px solid var(--text-4)", borderTopColor: "var(--text-2)", borderRadius: "50%",
+                }} />
               )}
-              {testState === "ok"   && "✓"}
-              {testState === "fail" && "✗"}
+              {testState === "ok"      && "✓ "}
+              {testState === "fail"    && "✗ "}
               {testState === "testing" ? "Testing…" : testState === "ok" ? "Valid" : testState === "fail" ? "Failed" : "Test key"}
             </button>
           </div>
 
-          {/* Test result message */}
           {testMsg && (
-            <p className="text-xs" style={{color: testState === "ok" ? "#4ade80" : "#f87171"}}>
+            <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 10, color: "var(--text-3)" }}>
               {testMsg}
             </p>
           )}
 
-          <p className="text-xs" style={{color:"rgba(100,116,139,0.5)"}}>
+          <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 9, color: "var(--text-4)", letterSpacing: "0.04em" }}>
             Key stored in your browser only — never logged on the server.
           </p>
         </div>
 
-        {/* ── Three input boxes ── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div className="flex flex-col gap-2">
-            <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">
-              My Resume (plain text)
-            </label>
-            <textarea
-              value={resumeText}
-              onChange={(e) => setResumeText(e.target.value)}
-              placeholder="Paste your current resume as plain text..."
-              rows={20}
-              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-200 placeholder-gray-600 resize-none focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 font-mono"
-            />
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">
-              My Writing Rules &amp; Instructions
-            </label>
-            <textarea
-              value={writingRules}
-              onChange={(e) => setWritingRules(e.target.value)}
-              placeholder={`e.g.\n- Use action verbs\n- XYZ format: Accomplished [X] by doing [Y] resulting in [Z]\n- No "responsible for"\n- Use moderncv LaTeX template\n- Keep bullets to one line\n- Tailor to keywords in JD`}
-              rows={20}
-              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-200 placeholder-gray-600 resize-none focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">
-              Job Description
-            </label>
-            <textarea
-              value={jobDescription}
-              onChange={(e) => setJobDescription(e.target.value)}
-              placeholder="Paste the full job description here..."
-              rows={20}
-              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-200 placeholder-gray-600 resize-none focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
+        {/* Three input boxes */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+          {[
+            { label: "My Resume (plain text)", value: resumeText, set: setResumeText, placeholder: "Paste your current resume as plain text...", mono: true },
+            { label: "Writing Rules & Instructions", value: writingRules, set: setWritingRules, placeholder: "e.g.\n- Use action verbs\n- XYZ format\n- No 'responsible for'\n- Use moderncv LaTeX template", mono: false },
+            { label: "Job Description", value: jobDescription, set: setJobDescription, placeholder: "Paste the full job description here...", mono: false },
+          ].map(({ label, value, set, placeholder, mono }) => (
+            <div key={label} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <p style={labelStyle}>{label}</p>
+              <textarea
+                value={value}
+                onChange={(e) => set(e.target.value)}
+                placeholder={placeholder}
+                rows={20}
+                style={{ ...inputStyle, fontFamily: mono ? "JetBrains Mono, monospace" : "Inter, system-ui, sans-serif" }}
+                onFocus={e => (e.target.style.borderColor = "var(--border-2)")}
+                onBlur={e => (e.target.style.borderColor = "var(--border)")}
+              />
+            </div>
+          ))}
         </div>
 
         {/* Generate */}
-        <div className="flex items-center gap-4">
-          <button
-            onClick={generate}
-            disabled={loading}
-            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors"
-          >
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button onClick={generate} disabled={loading} className="btn-primary">
             {loading ? (
-              <span className="flex items-center gap-2">
-                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
+              <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span className="animate-spin" style={{
+                  display: "inline-block", width: 12, height: 12,
+                  border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "currentColor", borderRadius: "50%",
+                }} />
                 Generating LaTeX…
               </span>
             ) : (
               `Generate LaTeX with ${activeProvider.label}`
             )}
           </button>
-          {error && <p className="text-xs text-red-400">{error}</p>}
+          {error && (
+            <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "var(--text-2)" }}>
+              {error}
+            </p>
+          )}
         </div>
 
         {/* Output */}
         {latex && (
-          <div ref={outputRef} className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">
-                LaTeX Output
-              </label>
+          <div ref={outputRef} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <p style={labelStyle}>LaTeX Output</p>
               <button
                 onClick={copyLatex}
-                className="px-3 py-1.5 text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors font-medium"
+                className="btn-ghost"
+                style={{ padding: "4px 12px", fontSize: 11 }}
               >
                 {copied ? "Copied!" : "Copy to clipboard"}
               </button>
@@ -258,11 +287,14 @@ export default function ResumeBuilderPage() {
               value={latex}
               readOnly
               rows={32}
-              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2.5 text-xs text-green-300 font-mono resize-none focus:outline-none"
+              style={{
+                ...inputStyle,
+                color: "var(--text-1)",
+                background: "var(--surface-2)",
+              }}
             />
-            <p className="text-xs text-gray-600">
-              Compile with <code className="text-gray-400">pdflatex resume.tex</code> or paste into{" "}
-              <span className="text-gray-400">Overleaf</span>.
+            <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 10, color: "var(--text-4)" }}>
+              Compile with <code style={{ color: "var(--text-3)" }}>pdflatex resume.tex</code> or paste into Overleaf.
             </p>
           </div>
         )}

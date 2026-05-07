@@ -1,158 +1,284 @@
-import { useFilterStore, countActiveFilters, type SortBy, type DateFilter, type RemoteFilter } from "../../store/filterStore";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useFilterStore, countActiveFilters,
+  type SortBy, type DateFilter, type RemoteFilter,
+  type JobTypeFilter, type CountryFilter,
+} from "../../store/filterStore";
+
+function fmt(n: number): string {
+  if (n < 1000) return String(n);
+  if (n < 10000) return `${(n / 1000).toFixed(1)}k`;
+  return `${Math.floor(n / 1000)}k`;
+}
 
 export default function FilterBar({ total, showing }: { total: number; showing: number }) {
   const filters = useFilterStore();
   const set     = useFilterStore((s) => s.set);
   const reset   = useFilterStore((s) => s.reset);
   const active  = countActiveFilters(filters);
+  const [expanded, setExpanded] = useState(false);
+
+  /* Debounced search */
+  const [localSearch, setLocalSearch] = useState(filters.company);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => { setLocalSearch(filters.company); }, [filters.company]);
+  const handleSearch = useCallback((val: string) => {
+    setLocalSearch(val);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => set({ company: val }), 280);
+  }, [set]);
+
+  const secondaryActive = [
+    filters.remote !== "all", filters.salaryMin > 0,
+    filters.yoeMax !== null, filters.ats !== "", !filters.hideApplied,
+  ].filter(Boolean).length;
 
   return (
-    <div className="flex items-center gap-2 px-4 py-2 overflow-x-auto scrollbar-thin shrink-0"
-      style={{ borderBottom:"1px solid rgba(255,255,255,0.05)", background:"rgba(7,9,16,0.95)" }}>
+    <div style={{ flexShrink: 0, borderBottom: "1px solid var(--border)", background: "var(--surface)" }}>
 
-      {/* Count badge */}
-      <div className="flex items-center gap-1.5 shrink-0 mr-1">
-        <span className="text-xs font-semibold" style={{color:"#e2e8f0"}}>
-          {showing < total ? showing : total}
-        </span>
-        {showing < total && <span className="text-xs" style={{color:"rgba(148,163,184,0.4)"}}>of {total}</span>}
-        <span className="text-xs" style={{color:"rgba(148,163,184,0.4)"}}>jobs</span>
+      {/* Primary row */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", flexWrap: "nowrap", overflowX: "auto" }}>
+
+        {/* Count */}
+        <div style={{ display: "flex", alignItems: "baseline", gap: 3, flexShrink: 0 }}>
+          <span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, fontWeight: 600, color: "var(--text-1)", fontVariantNumeric: "tabular-nums" }}>
+            {showing < total ? fmt(showing) : fmt(total)}
+          </span>
+          {showing < total && (
+            <span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 10, color: "var(--text-4)" }}>
+              /{fmt(total)}
+            </span>
+          )}
+          <span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 9, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-4)" }}>
+            showing
+          </span>
+        </div>
+
+        <Div />
+
+        {/* Search */}
+        <div style={{ position: "relative", flex: "1 1 0", minWidth: 0, maxWidth: 210 }}>
+          <svg style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}
+            width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="var(--text-4)" strokeWidth="2">
+            <circle cx="6.5" cy="6.5" r="5"/><path d="m11 11 3.5 3.5" strokeLinecap="round"/>
+          </svg>
+          <input
+            type="text" placeholder="Search title or company…"
+            value={localSearch} onChange={e => handleSearch(e.target.value)}
+            style={{
+              width: "100%", paddingLeft: 24, paddingRight: 8, paddingTop: 5, paddingBottom: 5,
+              borderRadius: 6, fontSize: 11,
+              fontFamily: "Inter, system-ui, sans-serif",
+              background: localSearch.trim() ? "var(--surface-2)" : "rgba(255,255,255,0.02)",
+              border: localSearch.trim() ? "1px solid var(--border-2)" : "1px solid var(--border)",
+              color: "var(--text-1)",
+              outline: "none",
+            }}
+          />
+        </div>
+
+        <Div />
+
+        <FSelect label="Sort" value={filters.sortBy} active={filters.sortBy !== "date"}
+          onChange={v => set({ sortBy: v as SortBy })}
+          options={[
+            { v: "date", l: "Newest" }, { v: "salary", l: "Salary" },
+            { v: "distance", l: "Near PA" }, { v: "yoe", l: "Entry" }, { v: "match", l: "Match" },
+          ]}
+        />
+
+        <FSelect label="Posted" value={filters.datePosted} active={filters.datePosted !== "all"}
+          onChange={v => set({ datePosted: v as DateFilter })}
+          options={[
+            { v: "all", l: "Any time" }, { v: "1h", l: "1h" }, { v: "5h", l: "5h" },
+            { v: "12h", l: "12h" }, { v: "24h", l: "Today" },
+            { v: "3d", l: "3d" }, { v: "7d", l: "Week" }, { v: "30d", l: "Month" },
+          ]}
+        />
+
+        <FSelect label="Type" value={filters.jobType} active={filters.jobType !== "all"}
+          onChange={v => set({ jobType: v as JobTypeFilter })}
+          options={[
+            { v: "all", l: "All" }, { v: "full_time", l: "Full-time" },
+            { v: "part_time", l: "Part-time" }, { v: "contract", l: "Contract" },
+          ]}
+        />
+
+        <Div />
+
+        {/* Country pills */}
+        <div style={{ display: "flex", flexShrink: 0, borderRadius: 6, border: "1px solid var(--border)", overflow: "hidden" }}>
+          {(["usa", "india", "all"] as CountryFilter[]).map((v, i) => {
+            const active = filters.country === v;
+            const labels: Record<CountryFilter, string> = { usa: "USA", india: "IND", all: "ALL" };
+            return (
+              <button key={v} onClick={() => set({ country: v })} style={{
+                padding: "3px 9px",
+                fontFamily: "JetBrains Mono, monospace",
+                fontSize: 9, fontWeight: 600,
+                letterSpacing: "0.08em", textTransform: "uppercase",
+                background: active ? "var(--text-1)" : "transparent",
+                color: active ? "var(--bg)" : "var(--text-4)",
+                border: "none",
+                borderRight: i < 2 ? "1px solid var(--border)" : "none",
+                transition: "background 0.1s, color 0.1s",
+              }}>
+                {labels[v]}
+              </button>
+            );
+          })}
+        </div>
+
+        <Div />
+
+        {/* 80%+ match */}
+        <button
+          onClick={() => set({ mustApply: !filters.mustApply })}
+          style={{
+            flexShrink: 0, padding: "4px 9px", borderRadius: 5,
+            fontFamily: "JetBrains Mono, monospace",
+            fontSize: 9, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase",
+            background: filters.mustApply ? "var(--text-1)" : "transparent",
+            color: filters.mustApply ? "var(--bg)" : "var(--text-4)",
+            border: "1px solid var(--border)",
+            transition: "all 0.12s",
+          }}
+        >
+          80%+
+        </button>
+
+        {/* More ▾ */}
+        <button
+          onClick={() => setExpanded(e => !e)}
+          style={{
+            flexShrink: 0, padding: "4px 9px", borderRadius: 5,
+            fontFamily: "JetBrains Mono, monospace",
+            fontSize: 9, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase",
+            background: (expanded || secondaryActive > 0) ? "var(--surface-3)" : "transparent",
+            color: (expanded || secondaryActive > 0) ? "var(--text-2)" : "var(--text-4)",
+            border: "1px solid var(--border)",
+          }}
+        >
+          {secondaryActive > 0 ? `+${secondaryActive}` : "More"}
+        </button>
+
+        {/* Clear */}
+        {active > 0 && (
+          <>
+            <Div />
+            <button
+              onClick={reset}
+              style={{
+                flexShrink: 0, padding: "4px 9px", borderRadius: 5,
+                fontFamily: "JetBrains Mono, monospace",
+                fontSize: 9, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase",
+                background: "transparent", color: "var(--text-3)",
+                border: "1px solid var(--border)",
+              }}
+            >
+              ✕ {active}
+            </button>
+          </>
+        )}
       </div>
 
-      <Div />
-
-      {/* Sort */}
-      <FSelect label="Sort" value={filters.sortBy} active={filters.sortBy!=="date"}
-        onChange={v=>set({sortBy:v as SortBy})} options={[
-          {v:"date",l:"Newest first"},{v:"salary",l:"Salary ↓"},
-          {v:"distance",l:"Near PA"},{v:"yoe",l:"Entry level"},{v:"match",l:"Match %"},
-        ]}/>
-
-      <Div />
-
-      {/* Posted */}
-      <FSelect label="Posted" value={filters.datePosted} active={filters.datePosted!=="all"}
-        onChange={v=>set({datePosted:v as DateFilter})} options={[
-          {v:"all",l:"Anytime"},{v:"1h",l:"Last 1 hour"},{v:"5h",l:"Last 5 hours"},
-          {v:"12h",l:"Last 12 hours"},{v:"24h",l:"Today (24h)"},
-          {v:"3d",l:"Last 3 days"},{v:"7d",l:"Last week"},{v:"30d",l:"Last month"},
-        ]}/>
-
-      {/* Remote */}
-      <FSelect label="Work" value={filters.remote} active={filters.remote!=="all"}
-        onChange={v=>set({remote:v as RemoteFilter})} options={[
-          {v:"all",l:"Any"},{v:"remote",l:"Remote only"},{v:"onsite",l:"On-site only"},
-        ]}/>
-
-      {/* Salary */}
-      <FSelect label="Salary" value={String(filters.salaryMin)} active={filters.salaryMin>0}
-        onChange={v=>set({salaryMin:Number(v)})} options={[
-          {v:"0",l:"Any"},{v:"50000",l:"$50k+"},{v:"75000",l:"$75k+"},
-          {v:"100000",l:"$100k+"},{v:"130000",l:"$130k+"},{v:"150000",l:"$150k+"},{v:"200000",l:"$200k+"},
-        ]}/>
-
-      {/* Experience */}
-      <FSelect label="Exp" value={filters.yoeMax==null?"":String(filters.yoeMax)} active={filters.yoeMax!==null}
-        onChange={v=>set({yoeMax:v===""?null:Number(v)})} options={[
-          {v:"",l:"Any level"},{v:"1",l:"0–1 yr"},{v:"2",l:"0–2 yrs"},
-          {v:"5",l:"0–5 yrs"},{v:"8",l:"0–8 yrs"},{v:"12",l:"0–12 yrs"},
-        ]}/>
-
-      {/* Source */}
-      <FSelect label="Source" value={filters.ats} active={filters.ats!==""}
-        onChange={v=>set({ats:v})} options={[
-          {v:"",l:"All"},{v:"greenhouse",l:"Greenhouse"},{v:"lever",l:"Lever"},
-          {v:"ashby",l:"Ashby"},{v:"linkedin",l:"LinkedIn"},
-          {v:"serpapi",l:"Google Jobs"},{v:"theirstack",l:"TheirStack"},
-          {v:"hn_hiring",l:"HN Hiring"},{v:"remotive",l:"Remotive"},
-        ]}/>
-
-      <Div />
-
-      {/* USA only */}
-      <Toggle label="USA only" checked={filters.usaOnly} onChange={v=>set({usaOnly:v})} />
-
-      <Div />
-
-      {/* Must Apply */}
-      <button onClick={()=>set({mustApply:!filters.mustApply})}
-        className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold shrink-0 transition-all duration-200"
-        style={filters.mustApply ? {
-          background:"rgba(34,197,94,0.12)",color:"#4ade80",border:"1px solid rgba(34,197,94,0.3)",
-          boxShadow:"0 0 12px rgba(34,197,94,0.15)"
-        } : {
-          background:"rgba(255,255,255,0.04)",color:"rgba(148,163,184,0.5)",border:"1px solid rgba(255,255,255,0.06)",
+      {/* Secondary row */}
+      {expanded && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 8, padding: "7px 12px",
+          flexWrap: "wrap", borderTop: "1px solid var(--border)",
+          background: "rgba(255,255,255,0.01)",
         }}>
-        {filters.mustApply && <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"/>}
-        Must Apply
-      </button>
-
-      <Div />
-
-      {/* Hide applied */}
-      <Toggle label="Hide applied" checked={filters.hideApplied} onChange={v=>set({hideApplied:v})} />
-
-      <Div />
-
-      {/* Search */}
-      <input type="text" placeholder="Company or title…" value={filters.company}
-        onChange={e=>set({company:e.target.value})}
-        className="text-xs rounded-lg px-3 py-1 w-40 shrink-0 outline-none transition-all duration-200"
-        style={{
-          background:"rgba(255,255,255,0.04)",
-          border:filters.company.trim()?"1px solid rgba(99,102,241,0.5)":"1px solid rgba(255,255,255,0.06)",
-          color:filters.company.trim()?"#a5b4fc":"#e2e8f0",
-        }}/>
-
-      {/* Reset */}
-      {active > 0 && (
-        <button onClick={reset}
-          className="flex items-center gap-1.5 text-xs font-semibold shrink-0 ml-1 px-2.5 py-1 rounded-lg transition-all duration-200"
-          style={{background:"rgba(239,68,68,0.08)",color:"#f87171",border:"1px solid rgba(239,68,68,0.15)"}}>
-          <span className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-bold"
-            style={{background:"rgba(239,68,68,0.3)"}}>
-            {active}
-          </span>
-          Clear
-        </button>
+          <FSelect label="Work" value={filters.remote} active={filters.remote !== "all"}
+            onChange={v => set({ remote: v as RemoteFilter })}
+            options={[{ v: "all", l: "Any" }, { v: "remote", l: "Remote" }, { v: "onsite", l: "On-site" }]}
+          />
+          <Div />
+          <FSelect label="Pay" value={String(filters.salaryMin)} active={filters.salaryMin > 0}
+            onChange={v => set({ salaryMin: Number(v) })}
+            options={[
+              { v: "0", l: "Any" }, { v: "50000", l: "$50k+" }, { v: "75000", l: "$75k+" },
+              { v: "100000", l: "$100k+" }, { v: "130000", l: "$130k+" },
+              { v: "150000", l: "$150k+" }, { v: "200000", l: "$200k+" },
+            ]}
+          />
+          <FSelect label="Exp" value={filters.yoeMax == null ? "" : String(filters.yoeMax)} active={filters.yoeMax !== null}
+            onChange={v => set({ yoeMax: v === "" ? null : Number(v) })}
+            options={[
+              { v: "", l: "Any" }, { v: "1", l: "0–1 yr" }, { v: "2", l: "0–2 yr" },
+              { v: "5", l: "0–5 yr" }, { v: "8", l: "0–8 yr" }, { v: "12", l: "0–12 yr" },
+            ]}
+          />
+          <FSelect label="Via" value={filters.ats} active={filters.ats !== ""}
+            onChange={v => set({ ats: v })}
+            options={[
+              { v: "", l: "All" }, { v: "greenhouse", l: "Greenhouse" },
+              { v: "lever", l: "Lever" }, { v: "ashby", l: "Ashby" },
+              { v: "linkedin", l: "LinkedIn" }, { v: "serpapi", l: "Google" },
+              { v: "theirstack", l: "TheirStack" }, { v: "hn_hiring", l: "HN Hiring" },
+              { v: "remotive", l: "Remotive" },
+            ]}
+          />
+          <Div />
+          <Toggle label="Hide applied" checked={filters.hideApplied} onChange={v => set({ hideApplied: v })} />
+        </div>
       )}
     </div>
   );
 }
 
 function Div() {
-  return <div className="w-px h-4 shrink-0" style={{background:"rgba(255,255,255,0.08)"}}/>;
+  return <div style={{ width: 1, height: 14, flexShrink: 0, background: "var(--border)" }} />;
 }
 
-function Toggle({label,checked,onChange}:{label:string;checked:boolean;onChange:(v:boolean)=>void}) {
+function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange(v: boolean): void }) {
   return (
-    <label className="flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer">
-      <input type="checkbox" checked={checked} onChange={e=>onChange(e.target.checked)}
-        className="w-3 h-3 accent-blue-500"/>
-      <span className="text-xs font-medium" style={{color:checked?"#60a5fa":"rgba(148,163,184,0.5)"}}>
+    <label style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, whiteSpace: "nowrap" }}>
+      <span
+        onClick={() => onChange(!checked)}
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "center",
+          width: 14, height: 14, borderRadius: 4, flexShrink: 0,
+          background: checked ? "var(--text-1)" : "transparent",
+          border: checked ? "1px solid var(--text-1)" : "1px solid var(--border-2)",
+          transition: "all 0.12s",
+        }}
+      >
+        {checked && <span style={{ color: "var(--bg)", fontSize: 9, lineHeight: 1 }}>✓</span>}
+      </span>
+      <span style={{
+        fontFamily: "JetBrains Mono, monospace",
+        fontSize: 9, letterSpacing: "0.07em", textTransform: "uppercase",
+        color: checked ? "var(--text-1)" : "var(--text-4)",
+      }}>
         {label}
       </span>
     </label>
   );
 }
 
-function FSelect({label,value,onChange,options,active}:{
-  label:string;value:string;active:boolean;
-  onChange:(v:string)=>void;options:{v:string;l:string}[];
+function FSelect({ label, value, onChange, options, active }: {
+  label: string; value: string; active: boolean;
+  onChange(v: string): void; options: { v: string; l: string }[];
 }) {
   return (
-    <label className="flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer">
-      <span className="text-xs font-medium" style={{color:active?"#60a5fa":"rgba(148,163,184,0.45)"}}>
+    <label style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0, whiteSpace: "nowrap" }}>
+      <span style={{
+        fontFamily: "JetBrains Mono, monospace", fontSize: 9,
+        letterSpacing: "0.08em", textTransform: "uppercase",
+        color: active ? "var(--text-2)" : "var(--text-4)",
+      }}>
         {label}
       </span>
-      <select value={value} onChange={e=>onChange(e.target.value)}
-        className="text-xs rounded-lg px-2 py-1 outline-none cursor-pointer transition-all duration-200"
-        style={{
-          background:"rgba(255,255,255,0.04)",
-          border:active?"1px solid rgba(99,102,241,0.4)":"1px solid rgba(255,255,255,0.06)",
-          color:active?"#a5b4fc":"#94a3b8",
-        }}>
-        {options.map(o=><option key={o.v} value={o.v}>{o.l}</option>)}
+      <select value={value} onChange={e => onChange(e.target.value)} style={{
+        fontFamily: "Inter, system-ui, sans-serif", fontSize: 11,
+        padding: "3px 6px", borderRadius: 5, outline: "none",
+        background: active ? "var(--surface-2)" : "rgba(255,255,255,0.02)",
+        border: active ? "1px solid var(--border-2)" : "1px solid var(--border)",
+        color: active ? "var(--text-1)" : "var(--text-2)",
+        transition: "all 0.1s",
+      }}>
+        {options.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
       </select>
     </label>
   );

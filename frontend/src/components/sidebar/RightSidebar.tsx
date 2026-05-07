@@ -13,28 +13,31 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 export default function RightSidebar() {
   const [tab, setTab] = useState<Tab>("today");
   return (
-    <div className="flex flex-col h-full min-h-[200px]" style={{background:"#070910"}}>
-      <div className="flex shrink-0" style={{borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
-        {TABS.map(t=>(
-          <button key={t.id} onClick={()=>setTab(t.id)}
+    <div className="flex flex-col h-full min-h-[200px]" style={{ background: "var(--bg)" }}>
+      <div className="flex shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
+        {TABS.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
             className="flex-1 py-2.5 flex flex-col items-center gap-0.5 text-[9px] font-semibold tracking-wider uppercase transition-all duration-200"
-            style={tab===t.id?{
-              color:"#60a5fa",
-              borderBottom:"2px solid #3b82f6",
-              background:"rgba(59,130,246,0.04)",
-            }:{
-              color:"rgba(148,163,184,0.35)",
-              borderBottom:"2px solid transparent",
-            }}>
+            style={tab === t.id ? {
+              color: "var(--text-1)",
+              borderBottom: "2px solid var(--text-1)",
+              background: "var(--surface-2)",
+            } : {
+              color: "var(--text-4)",
+              borderBottom: "2px solid transparent",
+            }}
+          >
             <span className="text-sm leading-none">{t.icon}</span>
             {t.label}
           </button>
         ))}
       </div>
       <div className="flex-1 overflow-y-auto scrollbar-thin">
-        {tab==="today"  && <TodayInsights/>}
-        {tab==="status" && <LiveStatus/>}
-        {tab==="apis"   && <ApiKeyManager/>}
+        {tab === "today"  && <TodayInsights />}
+        {tab === "status" && <LiveStatus />}
+        {tab === "apis"   && <ApiKeyManager />}
       </div>
     </div>
   );

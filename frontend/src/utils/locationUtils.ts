@@ -161,6 +161,24 @@ export function distanceFromPA(location: string | null): number {
   return 8000;
 }
 
+// ── India detection ─────────────────────────────────────────────────────────
+const INDIA_MARKERS = [
+  "india", "bangalore", "bengaluru", "hyderabad", "mumbai", "delhi",
+  "chennai", "pune", "kolkata", "noida", "gurgaon", "gurugram",
+  "ahmedabad", "jaipur", "lucknow", "coimbatore", "kochi", "chandigarh",
+];
+
+/**
+ * Returns true if the location is clearly in India.
+ * Remote or unknown locations return false.
+ */
+export function isIndia(location: string | null): boolean {
+  if (!location) return false;
+  const loc = location.toLowerCase();
+  if (/\bremote\b/.test(loc)) return false;
+  return INDIA_MARKERS.some((m) => loc.includes(m));
+}
+
 // Keywords that indicate a non-US location
 const INTERNATIONAL_MARKERS = [
   "united kingdom", "uk", " england", "london", "manchester", "edinburgh",

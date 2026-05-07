@@ -5,7 +5,8 @@ interface JobStore {
   jobs: Job[];
   selectedJobId: number | null;
   newJobCount: number;
-  appliedJobIds: Set<number>;   // tracks jobs acted on this session
+  appliedJobIds:  Set<number>;
+  skippedJobIds:  Set<number>;
 
   setJobs(jobs: Job[]): void;
   appendJobs(jobs: Job[]): void;
@@ -14,6 +15,8 @@ interface JobStore {
   nextJob(): void;
   markDead(id: number): void;
   markApplied(id: number): void;
+  skipJob(id: number): void;
+  undoSkip(id: number): void;
   resetNewCount(): void;
 }
 
@@ -22,6 +25,7 @@ export const useJobStore = create<JobStore>((set, get) => ({
   selectedJobId: null,
   newJobCount: 0,
   appliedJobIds: new Set(),
+  skippedJobIds: new Set(),
 
   setJobs(jobs) {
     set({ jobs, selectedJobId: jobs[0]?.id ?? null });
@@ -29,9 +33,8 @@ export const useJobStore = create<JobStore>((set, get) => ({
 
   appendJobs(newJobs) {
     set((s) => {
-      const existingIds = new Set(s.jobs.map((j) => j.id));
-      const unique = newJobs.filter((j) => !existingIds.has(j.id));
-      return { jobs: [...s.jobs, ...unique] };
+      const existing = new Set(s.jobs.map((j) => j.id));
+      return { jobs: [...s.jobs, ...newJobs.filter((j) => !existing.has(j.id))] };
     });
   },
 
@@ -42,15 +45,19 @@ export const useJobStore = create<JobStore>((set, get) => ({
     }));
   },
 
-  selectJob(id) {
-    set({ selectedJobId: id });
-  },
+  selectJob(id) { set({ selectedJobId: id }); },
 
   nextJob() {
-    const { jobs, selectedJobId } = get();
+    const { jobs, selectedJobId, skippedJobIds, appliedJobIds } = get();
     const idx = jobs.findIndex((j) => j.id === selectedJobId);
-    const next = jobs[idx + 1];
-    if (next) set({ selectedJobId: next.id });
+    for (let i = idx + 1; i < jobs.length; i++) {
+      const j = jobs[i];
+      if (!skippedJobIds.has(j.id) && !appliedJobIds.has(j.id)) {
+        set({ selectedJobId: j.id });
+        return;
+      }
+    }
+    set({ selectedJobId: null });
   },
 
   markDead(id) {
@@ -67,7 +74,23 @@ export const useJobStore = create<JobStore>((set, get) => ({
     });
   },
 
-  resetNewCount() {
-    set({ newJobCount: 0 });
+  skipJob(id) {
+    set((s) => {
+      const next = new Set(s.skippedJobIds);
+      next.add(id);
+      return { skippedJobIds: next };
+    });
+    get().nextJob();
   },
+
+  /** Undo: remove from skipped set and restore selection */
+  undoSkip(id) {
+    set((s) => {
+      const next = new Set(s.skippedJobIds);
+      next.delete(id);
+      return { skippedJobIds: next, selectedJobId: id };
+    });
+  },
+
+  resetNewCount() { set({ newJobCount: 0 }); },
 }));

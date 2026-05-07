@@ -1,134 +1,230 @@
-import clsx from "clsx";
+import { useRef, useState } from "react";
 import type { Job } from "../../types/job";
-import { ATSBadge, RemoteBadge, YOEBadge } from "../ui/Badge";
-import { useApplyJob } from "../../hooks/useApplications";
-import { useUIStore } from "../../store/uiStore";
 import { useJobStore } from "../../store/jobStore";
 import { distanceFromPA, formatDistance } from "../../utils/locationUtils";
 import { useFilterStore } from "../../store/filterStore";
 import { useResumeStore } from "../../store/resumeStore";
-import { computeMatchScore, getScoreColor } from "../../utils/matchScore";
+import { computeMatchScore } from "../../utils/matchScore";
+import { detectJobType, JOB_TYPE_LABEL } from "../../utils/jobType";
 
-interface JobCardProps { job: Job; selected: boolean; onClick(): void; }
+interface Props { job: Job; selected: boolean; onClick(): void; }
 
-export default function JobCard({ job, selected, onClick }: JobCardProps) {
-  const { mutate: applyJob, isPending } = useApplyJob();
-  const openSkipModal = useUIStore((s) => s.openSkipModal);
+function postedLabel(scraped_at: string): string {
+  const hrs = (Date.now() - new Date(scraped_at).getTime()) / 3_600_000;
+  if (hrs < 1)  return `${Math.round(hrs * 60)}m`;
+  if (hrs < 24) return `${Math.round(hrs)}h`;
+  return `${Math.floor(hrs / 24)}d`;
+}
+
+function Chip({ children, bold }: { children: React.ReactNode; bold?: boolean }) {
+  return (
+    <span style={{
+      fontFamily: "JetBrains Mono, monospace",
+      fontSize: 9, fontWeight: bold ? 600 : 400,
+      letterSpacing: "0.06em", textTransform: "uppercase",
+      padding: "2px 6px", borderRadius: 4,
+      background: "var(--surface-2)",
+      color: "var(--text-3)",
+      border: "1px solid var(--border)",
+      whiteSpace: "nowrap",
+    }}>
+      {children}
+    </span>
+  );
+}
+
+export default function JobCard({ job, selected, onClick }: Props) {
+  const skipJobStore  = useJobStore((s) => s.skipJob);
   const appliedJobIds = useJobStore((s) => s.appliedJobIds);
   const sortBy        = useFilterStore((s) => s.sortBy);
   const resumeParsed  = useResumeStore((s) => s.parsed);
   const matchScore    = resumeParsed ? computeMatchScore(job, resumeParsed) : null;
   const isApplied     = appliedJobIds.has(job.id);
+  const jobType       = detectJobType(job.title);
 
-  function handleApply(e: React.MouseEvent) {
-    e.stopPropagation();
-    if (!isApplied) applyJob({ jobId: job.id, status: "applied" });
-  }
-  function handleSkip(e: React.MouseEvent) { e.stopPropagation(); openSkipModal(); }
+  const [skipping, setSkipping] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const isFresh = job.scraped_at
+    && (Date.now() - new Date(job.scraped_at).getTime()) < 3_600_000;
 
   const salary = job.salary_min && job.salary_max
-    ? `$${(job.salary_min/1000).toFixed(0)}k–$${(job.salary_max/1000).toFixed(0)}k`
-    : job.salary_min ? `$${(job.salary_min/1000).toFixed(0)}k+` : null;
+    ? `$${(job.salary_min / 1000).toFixed(0)}k–$${(job.salary_max / 1000).toFixed(0)}k`
+    : job.salary_min ? `$${(job.salary_min / 1000).toFixed(0)}k+` : null;
 
   const distanceMiles = distanceFromPA(job.location);
   const showDistance  = sortBy === "distance";
 
-  const postedAgo = job.scraped_at ? (() => {
-    const hrs = (Date.now() - new Date(job.scraped_at).getTime()) / 3_600_000;
-    if (hrs < 1) return `${Math.round(hrs*60)}m ago`;
-    if (hrs < 24) return `${Math.round(hrs)}h ago`;
-    return `${Math.floor(hrs/24)}d ago`;
-  })() : null;
+  function triggerSkip() {
+    if (skipping) return;
+    setSkipping(true);
+    // Wait for throw animation to finish before updating the list
+    setTimeout(() => {
+      skipJobStore(job.id);
+      window.dispatchEvent(new CustomEvent("job-skipped", {
+        detail: { jobId: job.id, title: job.title },
+      }));
+    }, 300);
+  }
 
-  const isFresh = job.scraped_at && (Date.now() - new Date(job.scraped_at).getTime()) < 3_600_000;
+  function handleSkipClick(e: React.MouseEvent) {
+    e.stopPropagation();
+    triggerSkip();
+  }
 
   return (
-    <div onClick={onClick} className={clsx(
-      "px-4 py-3.5 cursor-pointer select-none transition-all duration-150 group relative",
-      "border-b",
-      isApplied  ? "opacity-60" : "",
-      selected   ? "" : "hover:bg-white/[0.02]",
-    )} style={{
-      borderBottomColor: "rgba(255,255,255,0.05)",
-      borderLeft: isApplied ? "2px solid rgba(34,197,94,0.5)"
-        : selected ? "2px solid rgba(99,102,241,0.8)" : "2px solid transparent",
-      background: isApplied ? "rgba(34,197,94,0.03)"
-        : selected ? "rgba(99,102,241,0.06)" : "transparent",
-    }}>
-      <div className="flex items-start gap-3 justify-between">
-        <div className="flex-1 min-w-0">
-          {/* Badges row */}
-          <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
+    <div
+      ref={cardRef}
+      onClick={onClick}
+      className={skipping ? "job-skip-anim" : ""}
+      style={{
+        position: "relative",
+        borderBottom: "1px solid var(--border)",
+        borderLeft: selected
+          ? "2px solid var(--text-1)"
+          : isApplied
+          ? "2px solid var(--border-2)"
+          : "2px solid transparent",
+        background: selected ? "var(--accent-bg)" : "transparent",
+        padding: "12px 16px 12px 14px",
+        opacity: isApplied ? 0.35 : 1,
+        transition: "background 0.12s, opacity 0.12s",
+      }}
+      onMouseEnter={e => {
+        if (!selected) (e.currentTarget as HTMLDivElement).style.background = "var(--surface)";
+      }}
+      onMouseLeave={e => {
+        if (!selected) (e.currentTarget as HTMLDivElement).style.background = "transparent";
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 8, justifyContent: "space-between" }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+
+          {/* Title row */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
             {isFresh && (
-              <span className="text-[9px] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded"
-                style={{background:"rgba(34,197,94,0.15)",color:"#4ade80",border:"1px solid rgba(34,197,94,0.2)"}}>
-                NEW
+              <span style={{
+                fontFamily: "JetBrains Mono, monospace", fontSize: 8,
+                fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase",
+                padding: "1px 5px", borderRadius: 3,
+                background: "var(--surface-3)",
+                color: "var(--text-2)",
+                border: "1px solid var(--border-2)",
+                flexShrink: 0,
+              }}>
+                new
               </span>
             )}
-            <ATSBadge ats={job.ats} />
-            {job.remote && <RemoteBadge />}
-            <YOEBadge min={job.yoe_min} max={job.yoe_max} />
-            {salary && (
-              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
-                style={{background:"rgba(34,197,94,0.1)",color:"#4ade80"}}>
-                {salary}
-              </span>
+            <p style={{
+              fontSize: 13.5, fontWeight: 600, lineHeight: 1.3,
+              letterSpacing: "-0.005em",
+              color: "var(--text-1)",
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            }}>
+              {job.title}
+            </p>
+          </div>
+
+          {/* Company · Location */}
+          <p style={{
+            fontSize: 12, lineHeight: 1.4, color: "var(--text-3)",
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            marginBottom: 8,
+          }}>
+            <span style={{ fontWeight: 500, color: "var(--text-2)" }}>{job.company.name}</span>
+            {job.location && <span> · {job.location}</span>}
+            {showDistance && !job.remote && distanceMiles < 8000 && (
+              <span> · {formatDistance(distanceMiles)}</span>
             )}
-            {postedAgo && (
-              <span className="text-[10px]" style={{color:"rgba(148,163,184,0.4)"}}>
-                {postedAgo}
-              </span>
+          </p>
+
+          {/* Chips */}
+          <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+            <Chip bold>{JOB_TYPE_LABEL[jobType]}</Chip>
+            {job.ats && <Chip>{job.ats.replace(/_/g, " ")}</Chip>}
+            {job.remote && <Chip bold>Remote</Chip>}
+            {(job.yoe_min !== null || job.yoe_max !== null) && (
+              <Chip>
+                {job.yoe_min === job.yoe_max || job.yoe_max === null
+                  ? `${job.yoe_min}y`
+                  : `${job.yoe_min}–${job.yoe_max}y`}
+              </Chip>
             )}
-            {matchScore !== null && (
-              <span className={`text-[10px] px-1.5 py-0.5 rounded border font-semibold ${getScoreColor(matchScore)}`}>
-                {matchScore}%
+            {salary && <Chip bold>{salary}</Chip>}
+            {resumeParsed && (
+              <Chip>{matchScore !== null ? `${matchScore}%` : "—"}</Chip>
+            )}
+            {job.scraped_at && (
+              <span style={{
+                fontFamily: "JetBrains Mono, monospace", fontSize: 9,
+                color: "var(--text-4)", marginLeft: "auto",
+              }}>
+                {postedLabel(job.scraped_at)}
               </span>
             )}
           </div>
-
-          {/* Title */}
-          <p className="font-semibold text-sm truncate" style={{color:"#f1f5f9"}}>
-            {job.title}
-          </p>
-
-          {/* Company / location */}
-          <p className="text-xs mt-0.5 truncate" style={{color:"rgba(148,163,184,0.6)"}}>
-            {job.company.name}
-            {job.location && ` · ${job.location}`}
-            {showDistance && !job.remote && distanceMiles < 8000 && (
-              <span style={{color:"rgba(148,163,184,0.35)"}}> · {formatDistance(distanceMiles)}</span>
-            )}
-          </p>
         </div>
 
         {/* Action buttons */}
-        <div className="flex gap-1.5 shrink-0 ml-2 items-center">
-          <a href={job.url} target="_blank" rel="noopener noreferrer"
-            onClick={e=>e.stopPropagation()}
-            className="px-2.5 py-1 text-xs font-medium rounded-lg transition-all duration-150"
-            style={{background:"rgba(255,255,255,0.05)",color:"rgba(148,163,184,0.8)",border:"1px solid rgba(255,255,255,0.07)"}}>
-            Open ↗
-          </a>
-
+        <div style={{ display: "flex", gap: 4, flexShrink: 0, alignItems: "flex-start", paddingTop: 2 }}>
           {isApplied ? (
-            <span className="px-2.5 py-1 text-xs font-semibold rounded-lg"
-              style={{background:"rgba(34,197,94,0.1)",color:"#4ade80",border:"1px solid rgba(34,197,94,0.2)"}}>
-              Applied ✓
+            <span style={{
+              fontFamily: "JetBrains Mono, monospace",
+              fontSize: 9, fontWeight: 600, letterSpacing: "0.06em",
+              padding: "3px 8px", borderRadius: 5,
+              background: "var(--surface-2)", color: "var(--text-2)",
+              border: "1px solid var(--border)",
+              whiteSpace: "nowrap", alignSelf: "center",
+            }}>
+              ✓ applied
             </span>
           ) : selected ? (
             <>
-              <button onClick={handleApply} disabled={isPending}
-                className="px-2.5 py-1 text-xs font-semibold text-white rounded-lg transition-all duration-150 disabled:opacity-40"
-                style={{background:"linear-gradient(135deg,#2563eb,#7c3aed)",boxShadow:"0 2px 12px rgba(99,102,241,0.3)"}}>
-                {isPending ? "…" : "Apply (A)"}
-              </button>
-              <button onClick={handleSkip}
-                className="px-2.5 py-1 text-xs font-medium rounded-lg transition-all duration-150"
-                style={{background:"rgba(255,255,255,0.05)",color:"rgba(148,163,184,0.7)",border:"1px solid rgba(255,255,255,0.07)"}}>
-                Skip (S)
+              {/* Opens external job posting */}
+              <a
+                href={job.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={e => e.stopPropagation()}
+                style={{
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  padding: "4px 11px", borderRadius: 6,
+                  fontSize: 11, fontWeight: 600,
+                  background: "var(--text-1)", color: "var(--bg)",
+                  textDecoration: "none", whiteSpace: "nowrap",
+                }}
+              >
+                Apply ↗
+              </a>
+              <button
+                onClick={handleSkipClick}
+                style={{
+                  padding: "4px 10px", borderRadius: 6,
+                  fontSize: 11, fontWeight: 500,
+                  background: "transparent", color: "var(--text-3)",
+                  border: "1px solid var(--border)", whiteSpace: "nowrap",
+                }}
+              >
+                Skip
               </button>
             </>
-          ) : null}
+          ) : (
+            /* Non-selected: just the external link icon */
+            <a
+              href={job.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={e => e.stopPropagation()}
+              style={{
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                width: 26, height: 26, borderRadius: 6, fontSize: 12,
+                background: "var(--surface-2)", color: "var(--text-4)",
+                border: "1px solid var(--border)", textDecoration: "none",
+              }}
+            >
+              ↗
+            </a>
+          )}
         </div>
       </div>
     </div>

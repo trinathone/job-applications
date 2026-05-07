@@ -76,6 +76,14 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
     telegram_alert_chat_id: str = ""
 
+    # ── OAuth & Email ──────────────────────────────────────────────────────────
+    google_client_id: str = Field(default="", description="Google OAuth2 client ID (set GOOGLE_CLIENT_ID in .env)")
+    smtp_host: str = Field(default="", description="SMTP server for OTP emails (e.g. smtp.gmail.com)")
+    smtp_port: int = Field(default=587)
+    smtp_user: str = Field(default="", description="SMTP login username")
+    smtp_password: str = Field(default="", description="SMTP login password or app password")
+    from_email: str = Field(default="", description="From address — defaults to smtp_user if blank")
+
     # ── Observability ─────────────────────────────────────────────────────────
     sentry_dsn: str = ""
 

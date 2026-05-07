@@ -28,59 +28,105 @@ export default function AdminPage() {
   });
 
   if (isLoading) {
-    return <div className="p-8 text-sm text-gray-500 animate-pulse">Loading users…</div>;
+    return (
+      <div className="page-container" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "var(--text-4)", letterSpacing: "0.06em" }}>
+          Loading…
+        </p>
+      </div>
+    );
   }
 
   if (error) {
     const msg = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
     return (
-      <div className="p-8 text-sm text-red-400">
-        {msg || "Access denied or API error."}
+      <div className="page-container" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <p style={{ fontSize: 13, color: "var(--text-2)" }}>{msg || "Access denied or API error."}</p>
       </div>
     );
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-gray-950 p-6">
-      <div className="max-w-4xl mx-auto space-y-4">
-        <div>
-          <h1 className="text-lg font-semibold text-gray-100">Users</h1>
-          <p className="text-xs text-gray-500 mt-0.5">{data?.length ?? 0} registered accounts</p>
+    <div className="page-container">
+      <div className="page-inner">
+
+        {/* Header */}
+        <div style={{ marginBottom: 28 }}>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", letterSpacing: "-0.02em", marginBottom: 4 }}>
+            Users
+          </h1>
+          <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 10, color: "var(--text-4)", letterSpacing: "0.06em" }}>
+            {data?.length ?? 0} registered accounts
+          </p>
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
+        {/* Table */}
+        <div className="card" style={{ overflow: "hidden" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
-                <th className="text-left px-4 py-3 font-medium">User</th>
-                <th className="text-left px-4 py-3 font-medium">Joined</th>
-                <th className="text-right px-4 py-3 font-medium">Applied</th>
-                <th className="text-right px-4 py-3 font-medium">Last active</th>
-                <th className="text-center px-4 py-3 font-medium">Status</th>
+              <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                {["User", "Joined", "Applied", "Last active", "Status"].map((h, i) => (
+                  <th
+                    key={h}
+                    style={{
+                      padding: "10px 16px",
+                      fontSize: 9, fontWeight: 600,
+                      fontFamily: "JetBrains Mono, monospace",
+                      letterSpacing: "0.08em", textTransform: "uppercase",
+                      color: "var(--text-4)",
+                      textAlign: i >= 2 && i !== 4 ? "right" : i === 4 ? "center" : "left",
+                    }}
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-800">
-              {data?.map((u) => (
-                <tr key={u.id} className="hover:bg-gray-800/40 transition-colors">
-                  <td className="px-4 py-3">
-                    <p className="text-gray-200 font-medium">{u.display_name || u.email}</p>
+            <tbody>
+              {data?.map((u, idx) => (
+                <tr
+                  key={u.id}
+                  style={{
+                    borderBottom: idx < (data.length - 1) ? "1px solid var(--border)" : "none",
+                    transition: "background 0.12s",
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.02)")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                >
+                  <td style={{ padding: "12px 16px" }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>
+                      {u.display_name || u.email}
+                    </p>
                     {u.display_name && (
-                      <p className="text-xs text-gray-500">{u.email}</p>
+                      <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 2 }}>{u.email}</p>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-xs text-gray-400">
-                    {timeAgo(u.joined)}
+                  <td style={{ padding: "12px 16px" }}>
+                    <span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 10, color: "var(--text-3)" }}>
+                      {timeAgo(u.joined)}
+                    </span>
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <span className={`text-sm font-semibold ${u.total_applied > 0 ? "text-green-400" : "text-gray-600"}`}>
+                  <td style={{ padding: "12px 16px", textAlign: "right" }}>
+                    <span style={{
+                      fontFamily: "JetBrains Mono, monospace",
+                      fontSize: 13, fontWeight: 700,
+                      color: u.total_applied > 0 ? "var(--text-1)" : "var(--text-4)",
+                    }}>
                       {u.total_applied}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right text-xs text-gray-400">
-                    {u.last_applied ? timeAgo(u.last_applied) : "—"}
+                  <td style={{ padding: "12px 16px", textAlign: "right" }}>
+                    <span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 10, color: "var(--text-3)" }}>
+                      {u.last_applied ? timeAgo(u.last_applied) : "—"}
+                    </span>
                   </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`inline-block w-2 h-2 rounded-full ${u.is_active ? "bg-green-400" : "bg-gray-600"}`} />
+                  <td style={{ padding: "12px 16px", textAlign: "center" }}>
+                    <span
+                      style={{
+                        display: "inline-block", width: 7, height: 7, borderRadius: "50%",
+                        background: u.is_active ? "var(--text-2)" : "var(--text-4)",
+                      }}
+                    />
                   </td>
                 </tr>
               ))}

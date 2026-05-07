@@ -68,12 +68,13 @@ function tokenize(text: string): Set<string> {
   return result;
 }
 
-export function computeMatchScore(job: Job, resume: ParsedResume): number {
+export function computeMatchScore(job: Job, resume: ParsedResume): number | null {
   // Job keyword set: title + description
   const jobText = `${job.title} ${(job as any).description_raw ?? ""}`;
   const jobKeywords = tokenize(jobText);
 
-  if (jobKeywords.size === 0) return 0;
+  // No recognisable tech keywords in the JD — can't determine a score
+  if (jobKeywords.size === 0) return null;
 
   // Resume keyword set: all parsed keywords run through same tokenizer
   const resumeText = [...resume.skills, ...resume.keywords, ...resume.titles].join(" ");
@@ -85,11 +86,12 @@ export function computeMatchScore(job: Job, resume: ParsedResume): number {
     if (resumeKeywords.has(kw)) intersection++;
   }
 
-  return Math.round((intersection / jobKeywords.size) * 100);
+  const score = Math.round((intersection / jobKeywords.size) * 100);
+  // 0% is not informative — treat as unknown
+  return score === 0 ? null : score;
 }
 
-export function getScoreColor(score: number): string {
-  if (score >= 70) return "text-green-400 bg-green-900/40 border-green-700";
-  if (score >= 40) return "text-yellow-400 bg-yellow-900/40 border-yellow-700";
-  return "text-gray-500 bg-gray-800 border-gray-700";
+export function getScoreColor(_score: number): string {
+  // Monochrome — all the same style, just varies by intensity via opacity at call site
+  return "border-[var(--border-2)]";
 }

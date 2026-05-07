@@ -33,9 +33,9 @@ export default function JobFeed({ jobs, loading }: JobFeedProps) {
 
   if (!jobs.length) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-gray-500">
-        <p className="text-lg">No jobs match your filters</p>
-        <p className="text-sm mt-1">Try clearing some filters above.</p>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 8, color: "var(--text-4)" }}>
+        <p style={{ fontSize: 14 }}>No jobs match your filters</p>
+        <p style={{ fontSize: 12, color: "var(--text-4)" }}>Try clearing some filters above.</p>
       </div>
     );
   }

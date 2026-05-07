@@ -29,76 +29,142 @@ export default function ResumePage() {
   }
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-gray-100">My Resume</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Paste your resume text — Claude extracts your skills and scores every job in the feed.
-        </p>
-      </div>
+    <div className="page-container">
+      <div className="page-inner" style={{ maxWidth: 720 }}>
 
-      {/* Parsed keywords */}
-      {parsed && (
-        <div className="mb-6 p-4 bg-gray-900 rounded-xl border border-gray-700">
-          <p className="text-xs text-gray-500 uppercase tracking-wider mb-3 font-semibold">Extracted Keywords</p>
-          <div className="space-y-2">
-            <KeywordRow label="Skills" chips={parsed.skills} color="bg-blue-900/50 text-blue-300 border-blue-700" />
-            <KeywordRow label="Titles" chips={parsed.titles} color="bg-purple-900/50 text-purple-300 border-purple-700" />
-            <KeywordRow label="Keywords" chips={parsed.keywords} color="bg-gray-800 text-gray-300 border-gray-600" />
-            <p className="text-xs text-gray-500 mt-1">Experience: <span className="text-gray-300">{parsed.yoe} years</span></p>
-          </div>
-          <p className="text-xs text-green-400 mt-3">✓ Match scores are now showing on job cards. Use "Sort → Match score" in the feed.</p>
+        {/* Header */}
+        <div style={{ marginBottom: 32 }}>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", letterSpacing: "-0.02em", marginBottom: 6 }}>
+            My Resume
+          </h1>
+          <p style={{ fontSize: 13, color: "var(--text-3)", lineHeight: 1.5 }}>
+            Paste your resume text — we extract your skills and score every job in the feed.
+          </p>
         </div>
-      )}
 
-      {/* Error */}
-      {error && <p className="mb-4 text-sm text-red-400 bg-red-900/20 rounded p-3 border border-red-800">{error}</p>}
-
-      {/* Textarea */}
-      <textarea
-        value={resumeText}
-        onChange={(e) => setResumeText(e.target.value)}
-        placeholder="Paste your full resume here — or use the file button to upload a .txt file..."
-        rows={18}
-        className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-blue-500 resize-y font-mono leading-relaxed"
-      />
-
-      <div className="flex items-center gap-3 mt-4">
-        <button
-          onClick={handleParse}
-          disabled={isParsing || !resumeText.trim()}
-          className="px-5 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium"
-        >
-          {isParsing ? "Parsing with Claude…" : "Parse Resume"}
-        </button>
-        <button
-          onClick={() => fileRef.current?.click()}
-          className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-sm border border-gray-700"
-        >
-          Upload .txt
-        </button>
-        <input ref={fileRef} type="file" accept=".txt,.md,.text" className="hidden" onChange={handleFile} />
-        {(resumeText || parsed) && (
-          <button onClick={clear} className="px-4 py-2 text-gray-500 hover:text-red-400 text-sm">
-            Clear
-          </button>
+        {/* Parsed keywords */}
+        {parsed && (
+          <div
+            className="card"
+            style={{ padding: "16px 20px", marginBottom: 24 }}
+          >
+            <p style={{
+              fontFamily: "JetBrains Mono, monospace", fontSize: 9,
+              fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase",
+              color: "var(--text-3)", marginBottom: 14,
+            }}>
+              Extracted Keywords
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <KeywordRow label="Skills"   chips={parsed.skills}   color="var(--text-1)" bg="var(--surface-3)" border="var(--border-2)" />
+              <KeywordRow label="Titles"   chips={parsed.titles}   color="var(--text-2)" bg="var(--surface-2)" border="var(--border)" />
+              <KeywordRow label="Keywords" chips={parsed.keywords} color="var(--text-3)" bg="var(--surface-2)" border="var(--border)" />
+            </div>
+            <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 12 }}>
+              Experience: <span style={{ color: "var(--text-1)", fontWeight: 600 }}>{parsed.yoe} years</span>
+            </p>
+            <p style={{
+              fontSize: 11, color: "var(--text-2)", marginTop: 10,
+              fontFamily: "JetBrains Mono, monospace",
+            }}>
+              ✓ Match scores are now showing on job cards. Use "Sort → Match" in the feed.
+            </p>
+          </div>
         )}
-        <span className="text-xs text-gray-600 ml-auto">
-          {resumeText.length > 0 ? `${resumeText.length.toLocaleString()} chars` : ""}
-        </span>
+
+        {/* Error */}
+        {error && (
+          <div style={{
+            marginBottom: 16, padding: "10px 14px", borderRadius: 8,
+            background: "var(--surface-2)",
+            border: "1px solid var(--border-2)",
+            fontSize: 13, color: "var(--text-2)",
+          }}>
+            {error}
+          </div>
+        )}
+
+        {/* Textarea */}
+        <textarea
+          value={resumeText}
+          onChange={e => setResumeText(e.target.value)}
+          placeholder="Paste your full resume here — or use the file button to upload a .txt file..."
+          rows={18}
+          style={{
+            width: "100%",
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: 10,
+            padding: "14px 16px",
+            fontSize: 12,
+            fontFamily: "JetBrains Mono, monospace",
+            lineHeight: 1.7,
+            color: "var(--text-2)",
+            outline: "none",
+            resize: "vertical",
+          }}
+          onFocus={e => (e.target.style.borderColor = "var(--border-2)")}
+          onBlur={e => (e.target.style.borderColor = "var(--border)")}
+        />
+
+        {/* Actions */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14 }}>
+          <button
+            onClick={handleParse}
+            disabled={isParsing || !resumeText.trim()}
+            className="btn-primary"
+          >
+            {isParsing ? "Parsing…" : "Parse Resume"}
+          </button>
+          <button
+            onClick={() => fileRef.current?.click()}
+            className="btn-ghost"
+          >
+            Upload .txt
+          </button>
+          <input ref={fileRef} type="file" accept=".txt,.md,.text" style={{ display: "none" }} onChange={handleFile} />
+          {(resumeText || parsed) && (
+            <button
+              onClick={clear}
+              style={{ fontSize: 12, color: "var(--text-3)", background: "none", border: "none", padding: "7px 8px" }}
+              onMouseEnter={e => (e.currentTarget.style.color = "var(--text-1)")}
+              onMouseLeave={e => (e.currentTarget.style.color = "var(--text-3)")}
+            >
+              Clear
+            </button>
+          )}
+          {resumeText.length > 0 && (
+            <span style={{ marginLeft: "auto", fontFamily: "JetBrains Mono, monospace", fontSize: 10, color: "var(--text-4)" }}>
+              {resumeText.length.toLocaleString()} chars
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-function KeywordRow({ label, chips, color }: { label: string; chips: string[]; color: string }) {
+function KeywordRow({ label, chips, color, bg, border }: {
+  label: string; chips: string[]; color: string; bg: string; border: string;
+}) {
   if (!chips?.length) return null;
   return (
-    <div className="flex items-start gap-2">
-      <span className="text-xs text-gray-500 w-16 shrink-0 pt-0.5">{label}</span>
-      <div className="flex flex-wrap gap-1">
-        {chips.map((c) => (
-          <span key={c} className={`text-xs px-2 py-0.5 rounded border ${color}`}>{c}</span>
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+      <span style={{
+        fontFamily: "JetBrains Mono, monospace", fontSize: 9,
+        letterSpacing: "0.07em", textTransform: "uppercase",
+        color: "var(--text-4)", width: 56, flexShrink: 0, paddingTop: 3,
+      }}>
+        {label}
+      </span>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+        {chips.map(c => (
+          <span key={c} style={{
+            fontSize: 11, padding: "2px 8px", borderRadius: 5,
+            background: bg, color, border: `1px solid ${border}`,
+          }}>
+            {c}
+          </span>
         ))}
       </div>
     </div>

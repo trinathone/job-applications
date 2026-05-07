@@ -11,18 +11,29 @@ export function useApplications() {
 }
 
 export function useApplyJob() {
-  const qc = useQueryClient();
+  const qc         = useQueryClient();
   const markApplied = useJobStore((s) => s.markApplied);
-  const nextJob = useJobStore((s) => s.nextJob);
+  const nextJob     = useJobStore((s) => s.nextJob);
 
   return useMutation({
     mutationFn: ({ jobId, status }: { jobId: number; status: ApplicationStatus }) =>
       upsertApplication(jobId, status),
-    onSuccess: (_data, variables) => {
-      markApplied(variables.jobId);
+    onSuccess: (_data, vars) => {
+      markApplied(vars.jobId);
       qc.invalidateQueries({ queryKey: ["applications"] });
-      // Auto-advance to next job after applying/skipping
       nextJob();
+    },
+  });
+}
+
+/** Only the API call — store updates handled manually so undo works. */
+export function useSkipJobApi() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ jobId }: { jobId: number }) =>
+      upsertApplication(jobId, "skipped"),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["applications"] });
     },
   });
 }

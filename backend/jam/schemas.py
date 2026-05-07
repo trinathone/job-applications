@@ -100,6 +100,10 @@ class ApplicationOut(OrmBase):
     got_response: Optional[bool]
     created_at: datetime
     updated_at: datetime
+    # Enriched from Job (populated by list_applications, None on upsert responses)
+    job_title: Optional[str] = None
+    job_company_name: Optional[str] = None
+    job_url: Optional[str] = None
 
 
 # ── SSE Events ────────────────────────────────────────────────────────────────

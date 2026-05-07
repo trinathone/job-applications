@@ -339,3 +339,24 @@ class WeeklyDigest(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "week_start", name="uq_weekly_digests_user_week"),
     )
+
+
+# ── OTP Code ──────────────────────────────────────────────────────────────────
+# Single-use 6-digit codes for passwordless email sign-in.
+# Created by POST /api/auth/otp/request, consumed by POST /api/auth/otp/verify.
+
+class OtpCode(Base):
+    __tablename__ = "otp_codes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    email: Mapped[str] = mapped_column(String(320), nullable=False, index=True)
+    code_hash: Mapped[str] = mapped_column(String(128), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+    used: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        Index("idx_otp_codes_email_created", "email", "created_at"),
+    )

@@ -19,35 +19,55 @@ export default function TodayInsights() {
   });
 
   if (isLoading || !data) {
-    return <div className="p-4 text-gray-500 text-sm">Loading insights…</div>;
+    return (
+      <div style={{ padding: 16, fontSize: 12, color: "var(--text-4)", fontFamily: "JetBrains Mono, monospace" }}>
+        Loading insights…
+      </div>
+    );
   }
 
   return (
-    <div className="p-4 space-y-5">
-      <div className="flex items-center gap-2">
-        <span className={`w-2 h-2 rounded-full ${data.scrape_healthy ? "bg-green-400" : "bg-red-400"}`} />
-        <span className="text-xs text-gray-400">
+    <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span
+          style={{
+            width: 8, height: 8, borderRadius: "50%",
+            background: data.scrape_healthy ? "var(--text-2)" : "var(--text-1)",
+            flexShrink: 0,
+          }}
+        />
+        <span style={{ fontSize: 12, color: "var(--text-3)" }}>
           {data.scrape_healthy ? "Scrape OK" : "Scrape degraded"}
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         <Stat label="New today" value={data.new_jobs_today} />
-        <Stat label="Applied" value={data.applied_today} />
-        <Stat label="Streak" value={`${data.apply_streak_days}d`} />
+        <Stat label="Applied"   value={data.applied_today} />
+        <Stat label="Streak"    value={`${data.apply_streak_days}d`} />
       </div>
 
       {Object.keys(data.top_ats_sources).length > 0 && (
         <section>
-          <h3 className="text-xs text-gray-500 uppercase tracking-wider mb-2">Sources</h3>
-          <div className="space-y-1">
+          <h3 style={{
+            fontFamily: "JetBrains Mono, monospace",
+            fontSize: 9, letterSpacing: "0.08em", textTransform: "uppercase",
+            color: "var(--text-4)", marginBottom: 8,
+          }}>
+            Sources
+          </h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             {Object.entries(data.top_ats_sources)
               .sort(([, a], [, b]) => b - a)
               .slice(0, 6)
               .map(([ats, count]) => (
-                <div key={ats} className="flex justify-between text-xs">
-                  <span className="text-gray-300 capitalize">{ats.replace(/_/g, " ")}</span>
-                  <span className="text-gray-500">{count}</span>
+                <div key={ats} style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
+                  <span style={{ color: "var(--text-2)", textTransform: "capitalize" }}>
+                    {ats.replace(/_/g, " ")}
+                  </span>
+                  <span style={{ color: "var(--text-4)", fontFamily: "JetBrains Mono, monospace" }}>
+                    {count}
+                  </span>
                 </div>
               ))}
           </div>
@@ -56,10 +76,22 @@ export default function TodayInsights() {
 
       {data.top_companies.length > 0 && (
         <section>
-          <h3 className="text-xs text-gray-500 uppercase tracking-wider mb-2">Top Companies</h3>
-          <div className="flex flex-wrap gap-1">
+          <h3 style={{
+            fontFamily: "JetBrains Mono, monospace",
+            fontSize: 9, letterSpacing: "0.08em", textTransform: "uppercase",
+            color: "var(--text-4)", marginBottom: 8,
+          }}>
+            Top Companies
+          </h3>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
             {data.top_companies.map((c) => (
-              <span key={c} className="text-xs bg-gray-800 text-gray-300 px-2 py-0.5 rounded">{c}</span>
+              <span key={c} style={{
+                fontSize: 11, padding: "2px 8px", borderRadius: 4,
+                background: "var(--surface-2)", color: "var(--text-3)",
+                border: "1px solid var(--border)",
+              }}>
+                {c}
+              </span>
             ))}
           </div>
         </section>
@@ -70,9 +102,18 @@ export default function TodayInsights() {
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="bg-gray-800 rounded-lg px-3 py-2">
-      <p className="text-lg font-bold text-gray-100">{value}</p>
-      <p className="text-xs text-gray-500">{label}</p>
+    <div style={{
+      background: "var(--surface-2)", borderRadius: 8,
+      padding: "8px 12px", border: "1px solid var(--border)",
+    }}>
+      <p style={{ fontSize: 18, fontWeight: 700, color: "var(--text-1)", marginBottom: 2 }}>{value}</p>
+      <p style={{
+        fontFamily: "JetBrains Mono, monospace",
+        fontSize: 9, letterSpacing: "0.07em", textTransform: "uppercase",
+        color: "var(--text-4)",
+      }}>
+        {label}
+      </p>
     </div>
   );
 }
