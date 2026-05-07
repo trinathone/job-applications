@@ -78,6 +78,10 @@ class Settings(BaseSettings):
         default="",
         description="Optional second admin password required via X-Admin-Password.",
     )
+    invite_code_hashes: list[str] = Field(
+        default=[],
+        description="SHA-256 hashes for invite-only login codes.",
+    )
 
     # ── Notifications ─────────────────────────────────────────────────────────
     telegram_bot_token: str = ""

@@ -39,3 +39,8 @@ export async function googleAuth(credential: string): Promise<TokenOut> {
   const { data } = await client.post<TokenOut>("/auth/google", { credential });
   return data;
 }
+
+export async function inviteAuth(code: string): Promise<TokenOut> {
+  const { data } = await client.post<TokenOut>("/auth/invite", { code });
+  return data;
+}

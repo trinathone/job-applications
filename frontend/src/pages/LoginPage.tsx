@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import * as THREE from "three";
-import { login, register, requestOtp, verifyOtp, googleAuth } from "../api/auth";
+import { login, register, requestOtp, verifyOtp, googleAuth, inviteAuth } from "../api/auth";
 import { useAuthStore } from "../store/authStore";
 
 /* ── GLSL ─────────────────────────────────────────────────────────── */
@@ -23,7 +23,7 @@ const VERT = /* glsl */`
     gl_Position = projectionMatrix * mv;
     gl_PointSize = aSize * (380.0 / -mv.z) * (1.0 + uMouse * 0.4);
     vAlpha = 0.15 + 0.5 * abs(sin(t * 0.5 + aOffset));
-    vColor = vec3(0.85);
+    vColor = vec3(0.5);
   }
 `;
 const FRAG = /* glsl */`
@@ -57,7 +57,7 @@ const GRID_FRAG = /* glsl */`
 `;
 
 /* ── Types ────────────────────────────────────────────────────────── */
-type AuthFlow = "google_otp" | "password";
+type AuthFlow = "google_otp" | "password" | "invite";
 type OtpStep  = "email" | "code";
 
 declare global {
@@ -93,6 +93,7 @@ export default function LoginPage() {
   const [email,   setEmail]   = useState("");
   const [code,    setCode]    = useState("");
   const [password, setPassword] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
   const [name,    setName]    = useState("");
   const [pwMode,  setPwMode]  = useState<"login" | "register">("login");
   const [error,   setError]   = useState<string | null>(null);
@@ -291,12 +292,24 @@ export default function LoginPage() {
     } finally { setBusy(false); }
   }
 
+  async function submitInvite(e: FormEvent) {
+    e.preventDefault();
+    setError(null); setBusy(true);
+    try {
+      const r = await inviteAuth(inviteCode.trim());
+      setAuth(r.access_token, { id: r.user_id, email: r.email, display_name: r.display_name, is_admin: false });
+      navigate("/dashboard", { replace: true });
+    } catch (err: unknown) {
+      setError((err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? "Invalid invitation code.");
+    } finally { setBusy(false); }
+  }
+
   /* ── UI helpers ───────────────────────────────────────────────── */
   const inputStyle: React.CSSProperties = {
     width: "100%", padding: "12px 14px", borderRadius: 10,
     fontSize: 14, outline: "none",
-    background: "rgba(255,255,255,0.05)",
-    border: "1px solid rgba(255,255,255,0.1)",
+    background: "rgba(255,255,255,0.08)",
+    border: "1px solid rgba(255,255,255,0.18)",
     color: "#ffffff",
     boxSizing: "border-box",
   };
@@ -314,10 +327,15 @@ export default function LoginPage() {
     <div style={{ position: "relative", minHeight: "100svh", overflow: "hidden", background: "#000000" }}>
       <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} />
 
+      {/* Dark overlay — makes card legible regardless of background */}
+      <div style={{
+        position: "absolute", inset: 0, pointerEvents: "none",
+        background: "rgba(0,0,0,0.72)",
+      }} />
       {/* Vignette */}
       <div style={{
         position: "absolute", inset: 0, pointerEvents: "none",
-        background: "radial-gradient(ellipse 75% 75% at 50% 50%, transparent 25%, #000000 100%)",
+        background: "radial-gradient(ellipse 60% 60% at 50% 50%, transparent 0%, #000000 100%)",
       }} />
 
       {/* Top progress bar */}
@@ -351,12 +369,12 @@ export default function LoginPage() {
         </div>
 
         {/* Card */}
-        <div style={{ width: "100%", maxWidth: 380 }}>
+        <div style={{ width: "100%", maxWidth: 400 }}>
           <div style={{
-            borderRadius: 18, padding: "28px 28px",
-            background: "rgba(255,255,255,0.04)",
-            backdropFilter: "blur(32px)",
-            border: "1px solid rgba(255,255,255,0.09)",
+            borderRadius: 20, padding: "32px",
+            background: "#111111",
+            border: "1px solid rgba(255,255,255,0.12)",
+            boxShadow: "0 32px 80px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.04)",
           }}>
 
             {/* ── Google + OTP flow ─────────────────────────────── */}
@@ -396,7 +414,7 @@ export default function LoginPage() {
                       onChange={e => { setEmail(e.target.value); setError(null); }}
                       style={inputStyle}
                       onFocus={e => { e.currentTarget.style.border = "1px solid rgba(255,255,255,0.3)"; e.currentTarget.style.background = "rgba(255,255,255,0.07)"; }}
-                      onBlur={e => { e.currentTarget.style.border = "1px solid rgba(255,255,255,0.1)"; e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+                      onBlur={e => { e.currentTarget.style.border = "1px solid rgba(255,255,255,0.1)"; e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
                     />
                     {error && <ErrorBox>{error}</ErrorBox>}
                     <button type="submit" disabled={busy} style={primaryBtn}>
@@ -421,7 +439,7 @@ export default function LoginPage() {
                       onChange={e => { setCode(e.target.value.replace(/\D/g, "").slice(0, 6)); setError(null); }}
                       style={{ ...inputStyle, textAlign: "center", fontSize: 22, fontFamily: "JetBrains Mono, monospace", letterSpacing: "0.3em" }}
                       onFocus={e => { e.currentTarget.style.border = "1px solid rgba(255,255,255,0.3)"; e.currentTarget.style.background = "rgba(255,255,255,0.07)"; }}
-                      onBlur={e => { e.currentTarget.style.border = "1px solid rgba(255,255,255,0.1)"; e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+                      onBlur={e => { e.currentTarget.style.border = "1px solid rgba(255,255,255,0.1)"; e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
                       autoFocus
                     />
                     {error && <ErrorBox>{error}</ErrorBox>}
@@ -454,6 +472,47 @@ export default function LoginPage() {
                 >
                   Sign in with password
                 </button>
+                <button
+                  onClick={() => { setFlow("invite"); setError(null); setInfo(null); }}
+                  style={{
+                    marginTop: 10, width: "100%", background: "none", border: "none",
+                    fontSize: 11, color: "rgba(255,255,255,0.32)", cursor: "pointer",
+                    letterSpacing: "0.04em",
+                  }}
+                >
+                  Special invitation
+                </button>
+              </>
+            )}
+
+            {flow === "invite" && (
+              <>
+                <form onSubmit={submitInvite} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <input
+                    type="password"
+                    required
+                    placeholder="Invitation code"
+                    value={inviteCode}
+                    onChange={e => { setInviteCode(e.target.value); setError(null); }}
+                    style={inputStyle}
+                    onFocus={e => { e.currentTarget.style.border = "1px solid rgba(255,255,255,0.3)"; e.currentTarget.style.background = "rgba(255,255,255,0.07)"; }}
+                    onBlur={e => { e.currentTarget.style.border = "1px solid rgba(255,255,255,0.1)"; e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
+                  />
+                  {error && <ErrorBox>{error}</ErrorBox>}
+                  <button type="submit" disabled={busy} style={primaryBtn}>
+                    {busy ? "Checking…" : "Enter →"}
+                  </button>
+                </form>
+                <button
+                  onClick={() => { setFlow("google_otp"); setError(null); }}
+                  style={{
+                    marginTop: 16, width: "100%", background: "none", border: "none",
+                    fontSize: 11, color: "rgba(255,255,255,0.25)", cursor: "pointer",
+                    letterSpacing: "0.04em",
+                  }}
+                >
+                  ← Back to sign in
+                </button>
               </>
             )}
 
@@ -484,20 +543,20 @@ export default function LoginPage() {
                     <input type="text" placeholder="Your name" value={name} onChange={e => setName(e.target.value)}
                       style={inputStyle}
                       onFocus={e => { e.currentTarget.style.border = "1px solid rgba(255,255,255,0.3)"; e.currentTarget.style.background = "rgba(255,255,255,0.07)"; }}
-                      onBlur={e => { e.currentTarget.style.border = "1px solid rgba(255,255,255,0.1)"; e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+                      onBlur={e => { e.currentTarget.style.border = "1px solid rgba(255,255,255,0.1)"; e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
                     />
                   )}
                   <input type="email" required placeholder="you@gmail.com" value={email} onChange={e => setEmail(e.target.value)}
                     style={inputStyle}
                     onFocus={e => { e.currentTarget.style.border = "1px solid rgba(255,255,255,0.3)"; e.currentTarget.style.background = "rgba(255,255,255,0.07)"; }}
-                    onBlur={e => { e.currentTarget.style.border = "1px solid rgba(255,255,255,0.1)"; e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+                    onBlur={e => { e.currentTarget.style.border = "1px solid rgba(255,255,255,0.1)"; e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
                   />
                   <input type="password" required placeholder="Password"
                     value={password} onChange={e => setPassword(e.target.value)}
                     minLength={pwMode === "register" ? 8 : 1}
                     style={inputStyle}
                     onFocus={e => { e.currentTarget.style.border = "1px solid rgba(255,255,255,0.3)"; e.currentTarget.style.background = "rgba(255,255,255,0.07)"; }}
-                    onBlur={e => { e.currentTarget.style.border = "1px solid rgba(255,255,255,0.1)"; e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+                    onBlur={e => { e.currentTarget.style.border = "1px solid rgba(255,255,255,0.1)"; e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
                   />
                   {error && <ErrorBox>{error}</ErrorBox>}
                   <button type="submit" disabled={busy} style={primaryBtn}>
@@ -520,9 +579,20 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <p style={{ marginTop: 28, fontSize: 10, letterSpacing: "0.3em", textTransform: "uppercase", color: "rgba(255,255,255,0.12)", userSelect: "none" }}>
-          Gmail accounts only
-        </p>
+        <div style={{ marginTop: 28, display: "flex", gap: 14, flexWrap: "wrap", justifyContent: "center" }}>
+          {[
+            ["LinkedIn", "https://linkedin.com/in/neverest/"],
+            ["Telegram", "https://t.me/TNT3ME"],
+            ["Email", "mailto:trinath.connect@proton.me"],
+          ].map(([label, href]) => (
+            <a key={label} href={href} target={href.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer" style={{
+              fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase",
+              color: "rgba(255,255,255,0.18)", textDecoration: "none",
+            }}>
+              {label}
+            </a>
+          ))}
+        </div>
       </div>
     </div>
   );

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import hmac
 import secrets
 import smtplib
 from datetime import datetime, timedelta, timezone
@@ -71,12 +72,25 @@ class GoogleAuthBody(BaseModel):
     credential: str  # Google ID token from GSI client
 
 
+class InviteLoginBody(BaseModel):
+    code: str = Field(min_length=3, max_length=100)
+
+
 class TokenOut(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user_id: int
     email: str
     display_name: str | None
+
+
+def _sha256(text: str) -> str:
+    return hashlib.sha256(text.encode()).hexdigest()
+
+
+def _invite_allowed(code: str) -> bool:
+    digest = _sha256(code.strip())
+    return any(hmac.compare_digest(digest, h.strip()) for h in settings.invite_code_hashes if h.strip())
 
 
 class UserOut(BaseModel):
@@ -281,6 +295,31 @@ async def verify_otp(
         db.add(user)
         await db.flush()
         logger.info("user_created_via_otp", email=body.email, user_id=user.id)
+
+    token = create_access_token(user.id, user.email)
+    return TokenOut(access_token=token, user_id=user.id, email=user.email, display_name=user.display_name)
+
+
+@router.post("/invite", response_model=TokenOut)
+async def invite_login(
+    body: InviteLoginBody,
+    db: AsyncSession = Depends(get_db),
+) -> TokenOut:
+    """Passwordless invite-code login. Codes are verified by backend-only SHA-256 hashes."""
+    if not settings.invite_code_hashes or not _invite_allowed(body.code):
+        raise HTTPException(status_code=401, detail="Invalid invitation code")
+
+    digest = _sha256(body.code.strip())[:16]
+    email = f"invite-{digest}@jam.local"
+    display_name = "Invited User"
+
+    user_result = await db.execute(select(User).where(User.email == email))
+    user = user_result.scalar_one_or_none()
+    if not user:
+        user = User(email=email, display_name=display_name, hashed_password="")
+        db.add(user)
+        await db.flush()
+        logger.info("user_created_via_invite", user_id=user.id)
 
     token = create_access_token(user.id, user.email)
     return TokenOut(access_token=token, user_id=user.id, email=user.email, display_name=user.display_name)
