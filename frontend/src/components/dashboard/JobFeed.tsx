@@ -9,9 +9,10 @@ import { Spinner } from "../ui/Spinner";
 interface JobFeedProps {
   jobs: Job[];
   loading?: boolean;
+  onOpenDetails?: (job: Job) => void;
 }
 
-export default function JobFeed({ jobs, loading }: JobFeedProps) {
+export default function JobFeed({ jobs, loading, onOpenDetails }: JobFeedProps) {
   const selectedJobId = useJobStore((s) => s.selectedJobId);
   const selectJob = useJobStore((s) => s.selectJob);
   const listRef = useRef<FixedSizeList>(null);
@@ -42,12 +43,17 @@ export default function JobFeed({ jobs, loading }: JobFeedProps) {
 
   function Row({ index, style }: ListChildComponentProps) {
     const job = jobs[index];
+    function openJob() {
+      selectJob(job.id);
+      onOpenDetails?.(job);
+    }
+
     return (
       <div style={style}>
         <JobCard
           job={job}
           selected={job.id === selectedJobId}
-          onClick={() => selectJob(job.id)}
+          onClick={openJob}
         />
       </div>
     );

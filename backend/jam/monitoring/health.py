@@ -51,7 +51,13 @@ async def check_celery() -> ComponentHealth:
     try:
         from jam.config import settings
         broker = settings.celery_broker_url
-        if settings.scrape_trigger_token or not broker or "localhost" in broker or "127.0.0.1" in broker:
+        if (
+            settings.scrape_trigger_token
+            or not broker
+            or "localhost" in broker
+            or "127.0.0.1" in broker
+            or broker == settings.redis_url
+        ):
             return ComponentHealth(status="ok", detail="disabled in cloud scrape mode")
 
         from jam.tasks.celery_app import app

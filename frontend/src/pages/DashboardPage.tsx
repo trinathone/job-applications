@@ -65,6 +65,7 @@ export default function DashboardPage() {
   const newJobCount   = useJobStore((s) => s.newJobCount);
   const resetNewCount = useJobStore((s) => s.resetNewCount);
   const skipJobStore  = useJobStore((s) => s.skipJob);
+  const selectJob     = useJobStore((s) => s.selectJob);
 
   const jobs          = useJobStore((s) => s.jobs);
   const appliedJobIds = useJobStore((s) => s.appliedJobIds);
@@ -90,8 +91,8 @@ export default function DashboardPage() {
   );
 
   const selectedJob = useMemo(
-    () => jobs.find((j) => j.id === selectedJobId) ?? null,
-    [jobs, selectedJobId],
+    () => filteredJobs.find((j) => j.id === selectedJobId) ?? null,
+    [filteredJobs, selectedJobId],
   );
 
   const serverFilters = useMemo((): import("../api/jobs").JobFilters => ({
@@ -105,6 +106,13 @@ export default function DashboardPage() {
   const cursorRef = useRef<string | null>(null);
   const [hasMore, setHasMore]         = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+
+  useEffect(() => {
+    if (isLoading || filteredJobs.length === 0) return;
+    if (selectedJobId === null || !filteredJobs.some((job) => job.id === selectedJobId)) {
+      selectJob(filteredJobs[0].id);
+    }
+  }, [filteredJobs, isLoading, selectedJobId, selectJob]);
 
   useEffect(() => {
     if (data?.items) {
@@ -365,7 +373,13 @@ export default function DashboardPage() {
         {/* Job list */}
         <div style={{ flex: 1, minWidth: LIST_MIN, display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <div style={{ flex: 1, minHeight: 0 }}>
-            <JobFeed jobs={filteredJobs} loading={isLoading} />
+            <JobFeed
+              jobs={filteredJobs}
+              loading={isLoading}
+              onOpenDetails={() => {
+                if (!isMobile) setPanelOpen(true);
+              }}
+            />
           </div>
 
           {hasMore && (
@@ -416,6 +430,7 @@ export default function DashboardPage() {
             background: "var(--bg)", overflow: "hidden",
           }}>
             <JobDetailPanel
+              key={selectedJob?.id ?? "empty"}
               job={selectedJob}
               onClose={() => setPanelOpen(false)}
             />
