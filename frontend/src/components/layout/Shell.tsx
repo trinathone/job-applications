@@ -6,6 +6,8 @@ import { useViewMode } from "../../context/ViewModeContext";
 
 const BASE_NAV = [
   { to: "/dashboard",      label: "Board" },
+  { to: "/resume",         label: "Resume" },
+  { to: "/resume/builder", label: "Build" },
 ];
 
 /* ── Icons ─────────────────────────────────────────────────────────── */

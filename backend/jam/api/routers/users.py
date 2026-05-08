@@ -7,11 +7,8 @@ from __future__ import annotations
 import re
 import string
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-
-from jam.api.deps import get_current_user
-from jam.models import User
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
@@ -97,7 +94,6 @@ class ParsedResume(BaseModel):
 @router.post("/resume/parse", response_model=ParsedResume)
 async def parse_resume(
     body: ResumeParseRequest,
-    _current_user: User = Depends(get_current_user),
 ) -> ParsedResume:
     """Extract keywords from resume text using keyword set intersection. No AI."""
     if not body.text.strip():

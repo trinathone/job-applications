@@ -7,11 +7,8 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-
-from jam.api.routers.auth import get_current_user
-from jam.models import User
 
 router = APIRouter(prefix="/api/resume", tags=["resume-builder"])
 
@@ -99,7 +96,6 @@ async def _call_gemini(api_key: str, user_message: str) -> str:
 @router.post("/latex", response_model=LatexResponse)
 async def generate_latex(
     req: LatexRequest,
-    _user: User = Depends(get_current_user),
 ) -> LatexResponse:
     from jam.config import settings
 
@@ -139,7 +135,6 @@ async def generate_latex(
 @router.post("/test-key", response_model=TestKeyResponse)
 async def test_api_key(
     req: TestKeyRequest,
-    _user: User = Depends(get_current_user),
 ) -> TestKeyResponse:
     """Send a minimal request to verify the API key works."""
     key = req.api_key.strip()

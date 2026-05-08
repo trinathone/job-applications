@@ -15,6 +15,7 @@ import BatchTracker from "../components/dashboard/BatchTracker";
 import { Spinner } from "../components/ui/Spinner";
 import type { ScrapeCompletePayload } from "../types/sse";
 import { useViewMode } from "../context/ViewModeContext";
+import { Link } from "react-router-dom";
 
 const PANEL_MIN = 300;
 const PANEL_MAX = 720;
@@ -236,6 +237,27 @@ export default function DashboardPage() {
 
           {/* Right: BatchTracker + kbd hints + panel toggle */}
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+            {!resumeParsed && (
+              <Link
+                to="/resume"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  height: 28,
+                  padding: "0 10px",
+                  borderRadius: 6,
+                  border: "1px solid var(--border)",
+                  background: "var(--surface-2)",
+                  color: "var(--text-2)",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  textDecoration: "none",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Add resume for match
+              </Link>
+            )}
             <BatchTracker />
 
             <div style={{

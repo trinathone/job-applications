@@ -8,6 +8,8 @@ import Shell from "./components/layout/Shell";
 import DashboardPage from "./pages/DashboardPage";
 import LandingPage from "./pages/LandingPage";
 import NotFoundPage from "./pages/NotFoundPage";
+import ResumePage from "./pages/ResumePage";
+import ResumeBuilderPage from "./pages/ResumeBuilderPage";
 import AdminPage from "./pages/AdminPage";
 import { useJobStore } from "./store/jobStore";
 import { useAuthStore } from "./store/authStore";
@@ -172,6 +174,8 @@ function AppInner() {
           <Route path="/login" element={<Navigate to="/" replace />} />
           <Route element={<Shell />}>
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/resume" element={<ResumePage />} />
+            <Route path="/resume/builder" element={<ResumeBuilderPage />} />
             <Route path="/admin" element={<AdminPage />} />
           </Route>
           <Route path="*" element={<NotFoundPage />} />
