@@ -9,6 +9,10 @@ const HOURS: Record<string, number> = {
   "1h": 1, "5h": 5, "12h": 12, "24h": 24, "3d": 72, "7d": 168, "30d": 720,
 };
 
+function jobFreshnessTime(job: Job): number {
+  return new Date(job.posted_at ?? job.scraped_at).getTime();
+}
+
 export function applyFilters(
   jobs: Job[],
   filters: FilterState,
@@ -31,7 +35,7 @@ export function applyFilters(
   // ── Date posted ──────────────────────────────────────────────────────────────
   if (filters.datePosted !== "all") {
     const cutoff = Date.now() - HOURS[filters.datePosted] * 3_600_000;
-    result = result.filter((j) => new Date(j.scraped_at).getTime() >= cutoff);
+    result = result.filter((j) => jobFreshnessTime(j) >= cutoff);
   }
 
   // ── Country filter (replaces usaOnly boolean) ─────────────────────────────
@@ -68,7 +72,7 @@ export function applyFilters(
   // ── Sort ─────────────────────────────────────────────────────────────────────
   switch (filters.sortBy) {
     case "date":
-      result.sort((a, b) => new Date(b.scraped_at).getTime() - new Date(a.scraped_at).getTime());
+      result.sort((a, b) => jobFreshnessTime(b) - jobFreshnessTime(a));
       break;
     case "salary":
       result.sort((a, b) => (b.salary_min ?? -1) - (a.salary_min ?? -1));

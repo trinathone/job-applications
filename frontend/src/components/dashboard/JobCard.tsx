@@ -9,8 +9,12 @@ import { detectJobType, JOB_TYPE_LABEL } from "../../utils/jobType";
 
 interface Props { job: Job; selected: boolean; onClick(): void; }
 
-function postedLabel(scraped_at: string): string {
-  const hrs = (Date.now() - new Date(scraped_at).getTime()) / 3_600_000;
+function freshnessTime(job: Job): string {
+  return job.posted_at ?? job.scraped_at;
+}
+
+function postedLabel(iso: string): string {
+  const hrs = (Date.now() - new Date(iso).getTime()) / 3_600_000;
   if (hrs < 1)  return `${Math.round(hrs * 60)}m`;
   if (hrs < 24) return `${Math.round(hrs)}h`;
   return `${Math.floor(hrs / 24)}d`;
@@ -45,8 +49,8 @@ export default function JobCard({ job, selected, onClick }: Props) {
   const [skipping, setSkipping] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const isFresh = job.scraped_at
-    && (Date.now() - new Date(job.scraped_at).getTime()) < 3_600_000;
+  const visibleDate = freshnessTime(job);
+  const isFresh = (Date.now() - new Date(visibleDate).getTime()) < 3_600_000;
 
   const salary = job.salary_min && job.salary_max
     ? `$${(job.salary_min / 1000).toFixed(0)}k–$${(job.salary_max / 1000).toFixed(0)}k`
@@ -154,12 +158,12 @@ export default function JobCard({ job, selected, onClick }: Props) {
             {resumeParsed && (
               <Chip>{matchScore !== null ? `${matchScore}%` : "—"}</Chip>
             )}
-            {job.scraped_at && (
+            {visibleDate && (
               <span style={{
                 fontFamily: "JetBrains Mono, monospace", fontSize: 9,
                 color: "var(--text-4)", marginLeft: "auto",
               }}>
-                {postedLabel(job.scraped_at)}
+                {postedLabel(visibleDate)}
               </span>
             )}
           </div>

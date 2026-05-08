@@ -118,6 +118,7 @@ export default function JobDetailPanel({ job, onClose }: Props) {
   const isApplied  = appliedJobIds.has(job.id);
   const matchScore = resumeParsed ? computeMatchScore(job, resumeParsed) : null;
   const jobType    = detectJobType(job.title);
+  const visibleDate = job.posted_at ?? job.scraped_at;
 
   const salary = job.salary_min && job.salary_max
     ? `$${(job.salary_min / 1000).toFixed(0)}k – $${(job.salary_max / 1000).toFixed(0)}k / yr`
@@ -197,7 +198,7 @@ export default function JobDetailPanel({ job, onClose }: Props) {
 
           <MetaCard label="Posted">
             <span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "var(--text-3)" }}>
-              {timeAgo(job.scraped_at)}
+              {timeAgo(visibleDate)}
             </span>
           </MetaCard>
         </div>

@@ -5,7 +5,7 @@ GET /api/jobs
   ?ats=greenhouse|lever|ashby|...
   ?remote=true|false
   ?yoe_max=5
-  ?since=2025-01-01T00:00:00Z  (filter by scraped_at)
+  ?since=2025-01-01T00:00:00Z  (filter by posted_at, falling back to scraped_at)
   ?cursor=<ISO timestamp>        (keyset pagination)
   ?limit=50
   ?include_dead=false
@@ -17,7 +17,7 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -42,13 +42,14 @@ async def list_jobs(
 ) -> JobListResponse:
     """
     Keyset-paginated job feed.
-    Use ?cursor=<scraped_at_value> from previous response to get next page.
+    Latest means the source's posted_at when present, otherwise scraped_at.
     """
+    sort_at = func.coalesce(Job.posted_at, Job.scraped_at)
     q = (
         select(Job)
         .options(selectinload(Job.company))
         .join(Company, Job.company_id == Company.id)
-        .order_by(Job.scraped_at.desc())
+        .order_by(sort_at.desc(), Job.id.desc())
     )
 
     if not include_dead:
@@ -62,18 +63,17 @@ async def list_jobs(
     if yoe_max is not None:
         q = q.where((Job.yoe_min <= yoe_max) | Job.yoe_min.is_(None))
     if since:
-        q = q.where(Job.scraped_at >= since)
+        q = q.where(sort_at >= since)
     if cursor:
         # Keyset: get records older than the cursor
-        q = q.where(Job.scraped_at < cursor)
+        q = q.where(sort_at < cursor)
 
     q = q.limit(limit)
 
     result = await db.execute(q)
     jobs = result.scalars().all()
 
-    # Load companies eagerly (they're already joined)
-    next_cursor = jobs[-1].scraped_at if jobs else None
+    next_cursor = (jobs[-1].posted_at or jobs[-1].scraped_at) if jobs else None
 
     return JobListResponse(
         items=[JobOut.model_validate(j) for j in jobs],
