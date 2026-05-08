@@ -1,80 +1,104 @@
-# JAM — Job Applications Manager
+# JA — Public Job Board
 
-JAM is a full-stack job search cockpit: it scrapes job sources, stores jobs, lets users review/apply/skip, tracks applications, scores jobs against a resume, and exposes admin views for users and scrape health.
+JA is a public job board that shows scraped software jobs without forcing users to create an account. Visitors enter only basic info, then go straight to the job feed.
+
+## What It Does
+
+- Shows live job data from the backend.
+- Captures visitor name, email, and role: student, teacher, or other.
+- Lets visitors browse, filter, open, skip, and mark jobs locally.
+- Keeps admin tools locked behind admin credentials.
+- Runs the backend in the cloud, so the app does not depend on a laptop.
+- Exposes a cloud scrape trigger that can be called by GitHub Actions.
 
 ## Stack
 
 - Frontend: React, Vite, TypeScript, Zustand, React Query
-- Backend: FastAPI, SQLAlchemy, Postgres, Redis, Celery
-- Scraping: ATS scrapers plus external job APIs
-- Auth: Google Sign-In, email OTP, password login, invite-code login
+- Backend: FastAPI, SQLAlchemy, Postgres
+- Database: Supabase Postgres
+- Redis: Upstash Redis
+- Hosting: Vercel frontend, Render backend
+- Automation: GitHub Actions cloud scrape trigger
+
+## Live Shape
+
+```text
+Vercel frontend
+  -> Render FastAPI backend
+    -> Supabase Postgres
+    -> Upstash Redis
+
+GitHub Actions, after workflow permission is enabled
+  -> wakes Render backend
+  -> calls /api/scrape/run once daily
+```
 
 ## Local Run
 
-Start infra:
-
-```bash
-make dev-deps-docker
-```
-
-Run migrations and seed companies:
-
-```bash
-make migrate
-make seed
-```
-
-Run backend:
-
-```bash
-make run-api
-```
-
-Run frontend:
-
-```bash
-make run-frontend
-```
-
-## Required Environment
-
 Backend:
 
-```text
-DATABASE_URL=
-DATABASE_URL_SYNC=
-REDIS_URL=
-CELERY_BROKER_URL=
-CELERY_RESULT_BACKEND=
-SECRET_KEY=
-ALLOWED_ORIGINS=
-GOOGLE_CLIENT_ID=
-ADMIN_EMAILS=
-ADMIN_PANEL_PASSWORD=
-INVITE_CODE_HASHES=
+```bash
+cd backend
+uv run uvicorn jam.api.main:app --reload --port 8000
 ```
 
 Frontend:
 
-```text
-VITE_API_URL=
-VITE_GOOGLE_CLIENT_ID=
+```bash
+cd frontend
+npm install
+VITE_API_URL=http://127.0.0.1:8000/api npm run dev
 ```
 
-## Deployment
-
-Recommended production setup:
-
-- Vercel for frontend
-- Render or Railway for backend
-- Supabase or Neon for Postgres
-- Upstash or Railway Redis for Redis
-
-The frontend must point to the permanent backend:
+Open:
 
 ```text
-VITE_API_URL=https://your-backend.example.com/api
+http://127.0.0.1:5173
 ```
+
+## Required Production Env
+
+Render backend:
+
+```text
+DATABASE_URL=postgresql+asyncpg://...
+DATABASE_URL_SYNC=postgresql://...
+REDIS_URL=rediss://...
+CELERY_BROKER_URL=rediss://...
+CELERY_RESULT_BACKEND=rediss://...
+SECRET_KEY=...
+ALLOWED_ORIGINS=https://job-applications-gamma.vercel.app
+ADMIN_EMAILS=sreenathomg@gmail.com
+ADMIN_PANEL_PASSWORD=...
+SCRAPE_TRIGGER_TOKEN=...
+```
+
+Vercel frontend:
+
+```text
+VITE_API_URL=https://job-applications-5m2m.onrender.com/api
+```
+
+GitHub repository secret:
+
+```text
+SCRAPE_TRIGGER_TOKEN=same-value-as-render
+```
+
+## Public Flow
+
+1. Visitor opens the site.
+2. Visitor enters name, email, and role.
+3. The app stores that lead in the backend.
+4. Visitor sees the job board immediately.
+
+No Google login is required for normal visitors.
+
+## Scraping
+
+The backend exposes `POST /api/scrape/run`.
+
+Use GitHub Actions to call it once daily at `12:00 UTC` after the repository token has workflow permission.
 
 ## Support
 

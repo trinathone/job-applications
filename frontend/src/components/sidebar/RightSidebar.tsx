@@ -1,13 +1,11 @@
 import { useState } from "react";
 import TodayInsights from "../insights/TodayInsights";
 import LiveStatus from "./LiveStatus";
-import ApiKeyManager from "./ApiKeyManager";
 
-type Tab = "today" | "status" | "apis";
+type Tab = "today" | "status";
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "today",  label: "Today",  icon: "✦" },
   { id: "status", label: "Status", icon: "◉" },
-  { id: "apis",   label: "APIs",   icon: "⚙" },
 ];
 
 export default function RightSidebar() {
@@ -37,7 +35,6 @@ export default function RightSidebar() {
       <div className="flex-1 overflow-y-auto scrollbar-thin">
         {tab === "today"  && <TodayInsights />}
         {tab === "status" && <LiveStatus />}
-        {tab === "apis"   && <ApiKeyManager />}
       </div>
     </div>
   );

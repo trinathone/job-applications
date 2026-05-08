@@ -6,9 +6,6 @@ import { useViewMode } from "../../context/ViewModeContext";
 
 const BASE_NAV = [
   { to: "/dashboard",      label: "Board" },
-  { to: "/resume",         label: "Resume" },
-  { to: "/resume/builder", label: "Build" },
-  { to: "/dashboard/week", label: "Week" },
 ];
 
 /* ── Icons ─────────────────────────────────────────────────────────── */
@@ -95,6 +92,7 @@ export default function Shell() {
   const navigate = useNavigate();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const isAdmin            = useAuthStore((s) => s.isAdmin());
+  const token              = useAuthStore((s) => s.token);
   const clearAuth          = useAuthStore((s) => s.clearAuth);
   const { theme, toggle }  = useThemeStore();
   const { mode, isMobile, physicallyMobile, switchTo } = useViewMode();
@@ -208,9 +206,11 @@ export default function Shell() {
             <IconBtn onClick={toggle} title={theme === "dark" ? "Light mode" : "Dark mode"}>
               {theme === "dark" ? <SunIcon /> : <MoonIcon />}
             </IconBtn>
-            <IconBtn onClick={logout} title="Log out">
-              <LogoutIcon />
-            </IconBtn>
+            {token && (
+              <IconBtn onClick={logout} title="Log out">
+                <LogoutIcon />
+              </IconBtn>
+            )}
             <div style={{ height: 1, width: 24, background: "var(--border)", margin: "4px 0" }} />
             <span style={{
               fontFamily: "JetBrains Mono, monospace",
@@ -248,9 +248,11 @@ export default function Shell() {
             <IconBtn onClick={toggle} title={theme === "dark" ? "Light mode" : "Dark mode"}>
               {theme === "dark" ? <SunIcon /> : <MoonIcon />}
             </IconBtn>
-            <IconBtn onClick={logout} title="Log out">
-              <LogoutIcon />
-            </IconBtn>
+            {token && (
+              <IconBtn onClick={logout} title="Log out">
+                <LogoutIcon />
+              </IconBtn>
+            )}
 
             {/* Hamburger */}
             <button

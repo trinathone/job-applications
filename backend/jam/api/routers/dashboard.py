@@ -1,7 +1,7 @@
 """
 Dashboard API:
   GET  /api/dashboard/stream   — SSE stream of real-time job feed events
-  GET  /api/dashboard/insights — today's stats snapshot (requires auth)
+  GET  /api/dashboard/insights — today's public stats snapshot
 """
 from __future__ import annotations
 
@@ -17,8 +17,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from jam.api.deps import get_current_user, get_db, get_redis
-from jam.models import User
+from jam.api.deps import get_db, get_redis
 from jam.monitoring.metrics import SSE_CONNECTIONS_ACTIVE
 from jam.schemas import DashboardInsights
 
@@ -77,43 +76,14 @@ async def dashboard_stream(
 
 @router.get("/insights", response_model=DashboardInsights)
 async def get_insights(
-    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> DashboardInsights:
     today = date.today()
-    uid = current_user.id
 
     new_jobs_today = (await db.execute(
         text("SELECT COUNT(*) FROM jobs WHERE DATE(scraped_at) = :today AND is_dead = false"),
         {"today": today},
     )).scalar() or 0
-
-    applied_today = (await db.execute(
-        text("SELECT COUNT(*) FROM applications WHERE user_id = :uid AND session_date = :today AND status = 'applied'"),
-        {"uid": uid, "today": today},
-    )).scalar() or 0
-
-    streak_result = await db.execute(
-        text("""
-            WITH dates AS (
-                SELECT DISTINCT session_date FROM applications
-                WHERE user_id = :uid AND status = 'applied'
-                ORDER BY session_date DESC
-            )
-            SELECT COUNT(*) AS streak FROM (
-                SELECT session_date,
-                       (session_date - (ROW_NUMBER() OVER (ORDER BY session_date DESC) || ' days')::interval)::date AS grp
-                FROM dates
-            ) t
-            WHERE grp = (
-                SELECT (CURRENT_DATE - (ROW_NUMBER() OVER (ORDER BY session_date DESC) || ' days')::interval)::date
-                FROM dates LIMIT 1
-            )
-        """),
-        {"uid": uid},
-    )
-    streak_row = streak_result.first()
-    apply_streak = streak_row[0] if streak_row else 0
 
     top_ats = {row.ats: row.cnt for row in (await db.execute(
         text("SELECT ats, COUNT(*) AS cnt FROM jobs WHERE DATE(scraped_at) = :today AND is_dead = false GROUP BY ats ORDER BY cnt DESC LIMIT 10"),
@@ -148,8 +118,8 @@ async def get_insights(
 
     return DashboardInsights(
         new_jobs_today=new_jobs_today,
-        applied_today=applied_today,
-        apply_streak_days=apply_streak,
+        applied_today=0,
+        apply_streak_days=0,
         top_ats_sources=top_ats,
         top_companies=top_companies,
         top_skills=top_skills,

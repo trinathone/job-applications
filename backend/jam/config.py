@@ -118,6 +118,10 @@ class Settings(BaseSettings):
     # ── Notifications ─────────────────────────────────────────────────────────
     telegram_bot_token: str = ""
     telegram_alert_chat_id: str = ""
+    scrape_trigger_token: str = Field(
+        default="",
+        description="Secret token allowed to start cloud scrape runs from GitHub Actions.",
+    )
 
     # ── OAuth & Email ──────────────────────────────────────────────────────────
     google_client_id: str = Field(default="", description="Google OAuth2 client ID (set GOOGLE_CLIENT_ID in .env)")

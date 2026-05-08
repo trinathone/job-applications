@@ -146,6 +146,34 @@
   background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
 }
 
+.landing-page {
+  grid-template-columns: minmax(0, 1.15fr) minmax(340px, 0.85fr);
+}
+
+@media (max-width: 860px) {
+  .landing-page {
+    grid-template-columns: 1fr;
+    overflow-y: auto !important;
+  }
+  .landing-hero,
+  .landing-form-panel {
+    min-height: auto !important;
+  }
+  .landing-hero {
+    padding: 48px 22px 30px !important;
+    gap: 54px;
+  }
+  .landing-form-panel {
+    padding: 22px !important;
+    border-left: none !important;
+    border-top: 1px solid rgba(255,255,255,0.12);
+  }
+  .landing-metrics {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+}
+
 /* Primary button: always accent-colored (inverts with theme) */
 .btn-primary {
   display: inline-flex; align-items: center; justify-content: center;

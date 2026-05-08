@@ -4,16 +4,13 @@ import SimpleCursor from "./components/ui/SimpleCursor";
 import NoiseOverlay from "./components/ui/NoiseOverlay";
 import LoadingScreen from "./components/ui/LoadingScreen";
 import UndoToast from "./components/ui/UndoToast";
-import ProtectedRoute from "./components/layout/ProtectedRoute";
 import Shell from "./components/layout/Shell";
 import DashboardPage from "./pages/DashboardPage";
-import LoginPage from "./pages/LoginPage";
+import LandingPage from "./pages/LandingPage";
 import NotFoundPage from "./pages/NotFoundPage";
-import WeeklyPage from "./pages/WeeklyPage";
-import ResumePage from "./pages/ResumePage";
-import ResumeBuilderPage from "./pages/ResumeBuilderPage";
 import AdminPage from "./pages/AdminPage";
 import { useJobStore } from "./store/jobStore";
+import { useAuthStore } from "./store/authStore";
 import { useSkipJobApi } from "./hooks/useApplications";
 import {
   ViewModeProvider,
@@ -31,6 +28,7 @@ const HAS_LOADED = sessionStorage.getItem("ja-loaded");
 function GlobalSkipManager() {
   const undoSkip              = useJobStore((s) => s.undoSkip);
   const { mutate: commitSkip } = useSkipJobApi();
+  const token                 = useAuthStore((s) => s.token);
   const timerRef              = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   interface SkipState { jobId: number; title: string }
@@ -41,7 +39,7 @@ function GlobalSkipManager() {
       if (timerRef.current) {
         clearTimeout(timerRef.current);
         timerRef.current = null;
-        if (pending) commitSkip({ jobId: pending.jobId });
+        if (pending && token) commitSkip({ jobId: pending.jobId });
       }
       setPending({ jobId: e.detail.jobId, title: e.detail.title });
     };
@@ -53,7 +51,7 @@ function GlobalSkipManager() {
   useEffect(() => {
     if (!pending) return;
     timerRef.current = setTimeout(() => {
-      commitSkip({ jobId: pending.jobId });
+      if (token) commitSkip({ jobId: pending.jobId });
       setPending(null);
       timerRef.current = null;
     }, 3200);
@@ -73,7 +71,7 @@ function GlobalSkipManager() {
         setPending(null);
       }}
       onExpire={() => {
-        commitSkip({ jobId: pending.jobId });
+        if (token) commitSkip({ jobId: pending.jobId });
         setPending(null);
       }}
     />
@@ -170,16 +168,11 @@ function AppInner() {
         <GlobalSkipManager />
 
         <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route element={<ProtectedRoute />}>
-            <Route element={<Shell />}>
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/dashboard/week" element={<WeeklyPage />} />
-              <Route path="/resume" element={<ResumePage />} />
-              <Route path="/resume/builder" element={<ResumeBuilderPage />} />
-              <Route path="/admin" element={<AdminPage />} />
-            </Route>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<Navigate to="/" replace />} />
+          <Route element={<Shell />}>
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/admin" element={<AdminPage />} />
           </Route>
           <Route path="*" element={<NotFoundPage />} />
         </Routes>

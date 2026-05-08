@@ -165,6 +165,28 @@ class User(Base):
     )
 
 
+# ── Visitor Lead ─────────────────────────────────────────────────────────────
+
+class VisitorLead(Base):
+    __tablename__ = "visitor_leads"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    email: Mapped[str] = mapped_column(String(320), nullable=False, index=True)
+    role: Mapped[str] = mapped_column(
+        String(20),
+        CheckConstraint("role IN ('student', 'teacher', 'other')", name="ck_visitor_role"),
+        nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        Index("idx_visitor_leads_email_created", "email", "created_at"),
+    )
+
+
 # ── Application ───────────────────────────────────────────────────────────────
 
 APPLICATION_STATUSES = ("saved", "applied", "interviewing", "offer", "rejected", "archived", "skipped")

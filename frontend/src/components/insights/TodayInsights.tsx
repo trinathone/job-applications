@@ -3,8 +3,6 @@ import client from "../../api/client";
 
 interface Insights {
   new_jobs_today: number;
-  applied_today: number;
-  apply_streak_days: number;
   top_ats_sources: Record<string, number>;
   top_companies: string[];
   top_skills: string[];
@@ -43,8 +41,7 @@ export default function TodayInsights() {
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         <Stat label="New today" value={data.new_jobs_today} />
-        <Stat label="Applied"   value={data.applied_today} />
-        <Stat label="Streak"    value={`${data.apply_streak_days}d`} />
+        <Stat label="Sources"   value={Object.keys(data.top_ats_sources).length} />
       </div>
 
       {Object.keys(data.top_ats_sources).length > 0 && (

@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from jam.api.middleware import PrometheusMiddleware
 from jam.api.routers import applications, auth, dashboard, health, integrations, jobs, metrics, users
+from jam.api.routers import scrape_control, visitors
 from jam.api.routers import resume_builder, admin
 from jam.config import settings
 from jam.monitoring.sentry import init_sentry
@@ -37,10 +38,11 @@ async def lifespan(app: FastAPI):
         await conn.execute(text("SELECT 1"))
 
     # Create any new tables that aren't in the Alembic migration yet
-    from jam.models import Base, OtpCode, TailorSession  # noqa: F401
+    from jam.models import OtpCode, TailorSession, VisitorLead  # noqa: F401
     async with engine.begin() as conn:
         await conn.run_sync(TailorSession.__table__.create, checkfirst=True)
         await conn.run_sync(OtpCode.__table__.create, checkfirst=True)
+        await conn.run_sync(VisitorLead.__table__.create, checkfirst=True)
 
     logger.info("app_startup", environment=settings.environment)
 
@@ -82,6 +84,8 @@ def create_app() -> FastAPI:
     app.include_router(integrations.router)
     app.include_router(resume_builder.router)
     app.include_router(admin.router)
+    app.include_router(visitors.router)
+    app.include_router(scrape_control.router)
 
     return app
 

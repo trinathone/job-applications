@@ -32,7 +32,7 @@ function MarqueeTicker({ total, newCount }: { total: number; newCount: number })
   const segments = [
     `${fmt(total)} jobs indexed`,
     newCount > 0 ? `+${newCount} new — click to load` : null,
-    "scrapes: 7 am · 11 am · 4 pm EST",
+    "cloud scrape: daily at 12:00 UTC",
     "press A to open · S to skip",
     "7-day rolling window",
   ].filter(Boolean).join("   ·   ");
