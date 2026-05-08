@@ -10,6 +10,7 @@ import LandingPage from "./pages/LandingPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import ResumePage from "./pages/ResumePage";
 import ResumeBuilderPage from "./pages/ResumeBuilderPage";
+import SupportPage from "./pages/SupportPage";
 import AdminPage from "./pages/AdminPage";
 import { useJobStore } from "./store/jobStore";
 import { useAuthStore } from "./store/authStore";
@@ -23,8 +24,6 @@ import {
 
 // Apply viewport meta immediately on load (before first render)
 applyViewportMeta(getStoredMode());
-
-const HAS_LOADED = sessionStorage.getItem("ja-loaded");
 
 /* ── Skip manager ────────────────────────────────────────────────── */
 function GlobalSkipManager() {
@@ -153,15 +152,12 @@ function PhoneFrame({ children }: { children: React.ReactNode }) {
 /* ── App inner (reads view mode context) ─────────────────────────── */
 function AppInner() {
   const { mode, physicallyMobile } = useViewMode();
-  const [loading, setLoading] = useState(!HAS_LOADED);
+  const [loading, setLoading] = useState(true);
 
   const routes = (
     <>
       {loading && (
-        <LoadingScreen onDone={() => {
-          sessionStorage.setItem("ja-loaded", "1");
-          setLoading(false);
-        }} />
+        <LoadingScreen onDone={() => setLoading(false)} />
       )}
 
       <BrowserRouter>
@@ -176,6 +172,7 @@ function AppInner() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/resume" element={<ResumePage />} />
             <Route path="/resume/builder" element={<ResumeBuilderPage />} />
+            <Route path="/support" element={<SupportPage />} />
             <Route path="/admin" element={<AdminPage />} />
           </Route>
           <Route path="*" element={<NotFoundPage />} />

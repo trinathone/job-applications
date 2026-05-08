@@ -47,6 +47,17 @@ function MarqueeTicker({ total, newCount }: { total: number; newCount: number })
   );
 }
 
+function getVisitorFirstName(): string {
+  try {
+    const raw = localStorage.getItem("ja-visitor");
+    if (!raw) return "";
+    const visitor = JSON.parse(raw) as { name?: string };
+    return (visitor.name ?? "").trim().split(/\s+/)[0] ?? "";
+  } catch {
+    return "";
+  }
+}
+
 export default function DashboardPage() {
   const setJobs       = useJobStore((s) => s.setJobs);
   const appendJobs    = useJobStore((s) => s.appendJobs);
@@ -61,6 +72,17 @@ export default function DashboardPage() {
   const filters       = useFilterStore();
   const setFilter     = useFilterStore((s) => s.set);
   const resumeParsed  = useResumeStore((s) => s.parsed);
+  const [visitorName] = useState(getVisitorFirstName);
+  const personalLine = useMemo(() => {
+    const name = visitorName || "friend";
+    const lines = [
+      `${name}, you are one step away from your next job.`,
+      `${name}, fresh roles are waiting. Pick the sharp one.`,
+      `${name}, today can be the day one good apply changes things.`,
+      `${name}, your next yes may already be on this board.`,
+    ];
+    return lines[new Date().getMinutes() % lines.length];
+  }, [visitorName]);
 
   const filteredJobs = useMemo(
     () => applyFilters(jobs, filters, resumeParsed, appliedJobIds, skippedJobIds),
@@ -177,6 +199,41 @@ export default function DashboardPage() {
 
       {/* ══ TOP SECTION — full width ═══════════════════════════════════ */}
       <div style={{ flexShrink: 0, borderBottom: "1px solid var(--border)", background: "var(--surface)" }}>
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          padding: "9px 20px",
+          borderBottom: "1px solid var(--border)",
+          background: "linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.015))",
+        }}>
+          <p style={{
+            minWidth: 0,
+            fontSize: 12,
+            fontWeight: 700,
+            color: "var(--text-1)",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}>
+            {personalLine}
+          </p>
+          <Link
+            to="/support"
+            style={{
+              flexShrink: 0,
+              fontFamily: "JetBrains Mono, monospace",
+              fontSize: 9,
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              color: "var(--text-3)",
+              textDecoration: "none",
+            }}
+          >
+            support
+          </Link>
+        </div>
 
         {/* Header row */}
         <div style={{

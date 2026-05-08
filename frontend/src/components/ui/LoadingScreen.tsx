@@ -1,13 +1,34 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-const LINES = [
-  "initializing workspace",
-  "fetching job index",
-  "loading filters",
-  "ready",
-];
+function getFirstName(): string {
+  try {
+    const raw = localStorage.getItem("ja-visitor");
+    if (!raw) return "";
+    const parsed = JSON.parse(raw) as { name?: string };
+    return (parsed.name ?? "").trim().split(/\s+/)[0] ?? "";
+  } catch {
+    return "";
+  }
+}
 
 export default function LoadingScreen({ onDone }: { onDone: () => void }) {
+  const lines = useMemo(() => {
+    const firstName = getFirstName();
+    if (firstName) {
+      return [
+        `welcome back ${firstName.toLowerCase()}`,
+        "scanning fresh jobs",
+        "calibrating resume match",
+        "opening your next door",
+      ];
+    }
+    return [
+      "warming up job radar",
+      "fetching cloud signals",
+      "ranking fresh roles",
+      "ready",
+    ];
+  }, []);
   const [progress, setProgress]       = useState(0);
   const [lineIdx, setLineIdx]         = useState(0);
   const [charIdx, setCharIdx]         = useState(0);
@@ -46,22 +67,22 @@ export default function LoadingScreen({ onDone }: { onDone: () => void }) {
   // Typewriter: cycle through LINES in sync with progress
   useEffect(() => {
     const targetLine = Math.min(
-      LINES.length - 1,
-      Math.floor((progress / 100) * LINES.length),
+      lines.length - 1,
+      Math.floor((progress / 100) * lines.length),
     );
     if (targetLine !== lineIdx) {
       setLineIdx(targetLine);
       setCharIdx(0);
     }
-  }, [progress, lineIdx]);
+  }, [progress, lineIdx, lines.length]);
 
   useEffect(() => {
-    if (charIdx >= LINES[lineIdx].length) return;
+    if (charIdx >= lines[lineIdx].length) return;
     const id = setTimeout(() => setCharIdx(c => c + 1), 28);
     return () => clearTimeout(id);
-  }, [charIdx, lineIdx]);
+  }, [charIdx, lineIdx, lines]);
 
-  const displayText  = LINES[lineIdx].slice(0, charIdx);
+  const displayText  = lines[lineIdx].slice(0, charIdx);
   const padded       = String(progress).padStart(3, "0");
 
   return (

@@ -117,6 +117,27 @@ export default function LandingPage() {
           }}>
             Live software jobs gathered into one sharp board. No account wall, no waiting room.
           </p>
+          <div style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 10,
+            marginTop: 26,
+          }}>
+            <a
+              href="https://linkedin.com/in/neverest/"
+              target="_blank"
+              rel="noreferrer"
+              style={heroLinkStyle}
+            >
+              LinkedIn
+            </a>
+            <a href="https://t.me/TNT3ME" target="_blank" rel="noreferrer" style={heroLinkStyle}>
+              Telegram
+            </a>
+            <a href="mailto:trinath.connect@proton.me" style={heroLinkStyle}>
+              Email
+            </a>
+          </div>
         </div>
 
         <div style={{
@@ -249,4 +270,19 @@ const inputStyle: React.CSSProperties = {
   padding: "0 14px",
   outline: "none",
   fontSize: 15,
+};
+
+const heroLinkStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  height: 34,
+  padding: "0 12px",
+  borderRadius: 8,
+  border: "1px solid rgba(255,255,255,0.18)",
+  background: "rgba(255,255,255,0.08)",
+  color: "rgba(255,255,255,0.78)",
+  textDecoration: "none",
+  fontSize: 12,
+  fontWeight: 800,
 };

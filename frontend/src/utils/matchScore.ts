@@ -1,13 +1,7 @@
 /**
- * Keyword Set Intersection match scoring — no AI.
+ * Hardcoded resume match formula — no AI, no network call.
  *
- * score = |resume_keywords ∩ job_keywords| / |job_keywords| × 100
- *
- * Steps:
- *  1. Tokenize job title + description: lowercase, strip punctuation, split
- *  2. Filter tokens to those in TECH_KEYWORDS dictionary
- *  3. Intersect with resume keywords (also filtered through same dictionary)
- *  4. Divide intersection size by job keyword set size → 0–100%
+ * score = skill overlap 55% + title fit 20% + experience fit 15% + signal bonus 10%
  */
 
 import type { Job } from "../types/job";
@@ -53,42 +47,108 @@ const TECH_KEYWORDS = new Set([
   // Seniority / domain (useful for title matching)
   "senior","junior","lead","staff","principal","architect","manager",
   "frontend","backend","fullstack","mobile","embedded","platform","data",
+  "software","engineer","developer","intern","entrylevel","newgrad",
 ]);
 
-function tokenize(text: string): Set<string> {
+const ALIASES: Record<string, string> = {
+  "js": "javascript",
+  "ts": "typescript",
+  "node.js": "nodejs",
+  "react.js": "react",
+  "next.js": "nextjs",
+  "full-stack": "fullstack",
+  "full": "fullstack",
+  "front-end": "frontend",
+  "back-end": "backend",
+  "postgresql": "postgres",
+  "golang": "go",
+  "k8s": "kubernetes",
+  "ci": "cicd",
+  "cd": "cicd",
+};
+
+const FORMULA = {
+  skill: 0.55,
+  title: 0.20,
+  experience: 0.15,
+  signal: 0.10,
+};
+
+function normalize(token: string): string {
+  const cleaned = token.toLowerCase().trim();
+  return ALIASES[cleaned] ?? cleaned;
+}
+
+function tokenize(text: string, includeGeneral = false): Set<string> {
   const tokens = text
     .toLowerCase()
+    .replace(/full\s+stack/g, "fullstack")
+    .replace(/front\s+end/g, "frontend")
+    .replace(/back\s+end/g, "backend")
+    .replace(/entry\s+level/g, "entrylevel")
+    .replace(/new\s+grad/g, "newgrad")
     .replace(/[/\-_.,;:()\[\]{}|+]/g, " ")
     .split(/\s+/)
     .filter((t) => t.length > 1);
   const result = new Set<string>();
   for (const t of tokens) {
-    if (TECH_KEYWORDS.has(t)) result.add(t);
+    const token = normalize(t);
+    if (TECH_KEYWORDS.has(token) || includeGeneral) result.add(token);
   }
   return result;
 }
 
+function overlapScore(needed: Set<string>, owned: Set<string>): number {
+  if (needed.size === 0 || owned.size === 0) return 0;
+  let hits = 0;
+  for (const item of needed) {
+    if (owned.has(item)) hits++;
+  }
+  return hits / needed.size;
+}
+
+function experienceScore(job: Job, resume: ParsedResume): number {
+  const yoe = Number.isFinite(resume.yoe) ? resume.yoe : 0;
+  if (job.yoe_min == null && job.yoe_max == null) return yoe > 0 ? 0.75 : 0.5;
+  if (job.yoe_min != null && yoe + 1 < job.yoe_min) {
+    const gap = job.yoe_min - yoe;
+    return Math.max(0.15, 1 - gap * 0.22);
+  }
+  if (job.yoe_max != null && yoe > job.yoe_max + 3) return 0.72;
+  return 1;
+}
+
 export function computeMatchScore(job: Job, resume: ParsedResume): number | null {
-  // Job keyword set: title + description
-  const jobText = `${job.title} ${(job as any).description_raw ?? ""}`;
+  const jobText = [
+    job.title,
+    job.company?.name,
+    job.ats,
+    job.location,
+    (job as any).description_raw,
+  ].filter(Boolean).join(" ");
   const jobKeywords = tokenize(jobText);
 
-  // No recognisable tech keywords in the JD — can't determine a score
-  if (jobKeywords.size === 0) return null;
-
-  // Resume keyword set: all parsed keywords run through same tokenizer
   const resumeText = [...resume.skills, ...resume.keywords, ...resume.titles].join(" ");
   const resumeKeywords = tokenize(resumeText);
+  if (resumeKeywords.size === 0) return null;
 
-  // Intersection
-  let intersection = 0;
-  for (const kw of jobKeywords) {
-    if (resumeKeywords.has(kw)) intersection++;
-  }
+  const titleKeywords = tokenize(job.title);
+  const resumeTitleKeywords = tokenize(resume.titles.join(" "));
+  const skill = overlapScore(jobKeywords, resumeKeywords);
+  const title = titleKeywords.size > 0
+    ? overlapScore(titleKeywords, new Set([...resumeTitleKeywords, ...resumeKeywords]))
+    : 0.45;
+  const experience = experienceScore(job, resume);
+  const signal = Math.min(1, (jobKeywords.size + resumeKeywords.size) / 18);
 
-  const score = Math.round((intersection / jobKeywords.size) * 100);
-  // 0% is not informative — treat as unknown
-  return score === 0 ? null : score;
+  const score = Math.round(100 * (
+    skill * FORMULA.skill +
+    title * FORMULA.title +
+    experience * FORMULA.experience +
+    signal * FORMULA.signal
+  ));
+
+  return Math.max(8, Math.min(99, score));
 }
 
 export function getScoreColor(_score: number): string {

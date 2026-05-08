@@ -42,8 +42,18 @@ async def check_redis() -> ComponentHealth:
 
 
 async def check_celery() -> ComponentHealth:
-    """Lightweight Celery check — pings the broker, not a worker."""
+    """Lightweight Celery check.
+
+    Public cloud mode runs scrapes through the API/GitHub cron path, so a
+    Celery worker is optional. Do not mark health degraded when the broker is
+    unset or still points at local development Redis.
+    """
     try:
+        from jam.config import settings
+        broker = settings.celery_broker_url
+        if settings.scrape_trigger_token or not broker or "localhost" in broker or "127.0.0.1" in broker:
+            return ComponentHealth(status="ok", detail="disabled in cloud scrape mode")
+
         from jam.tasks.celery_app import app
         # inspect().ping() is expensive; instead just verify broker connection
         conn = app.connection_for_read()
@@ -71,5 +81,3 @@ async def get_last_scrape_run() -> Optional[str]:
             return row[0].isoformat() if row else None
     except Exception:
         return None
-
-

@@ -8,6 +8,7 @@ const BASE_NAV = [
   { to: "/dashboard",      label: "Board" },
   { to: "/resume",         label: "Resume" },
   { to: "/resume/builder", label: "Build" },
+  { to: "/support",        label: "Help" },
 ];
 
 /* ── Icons ─────────────────────────────────────────────────────────── */
