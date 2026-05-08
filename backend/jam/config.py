@@ -4,9 +4,10 @@ Every other module imports `settings` from this file; nothing reads os.environ d
 """
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from functools import lru_cache
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import Field, computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -18,6 +19,7 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
+        enable_decoding=False,
     )
 
     # ── App ───────────────────────────────────────────────────────────────────
@@ -38,6 +40,30 @@ class Settings(BaseSettings):
         default=["http://localhost:5173", "http://localhost:3000"],
         description="CORS allowed origins",
     )
+
+    @field_validator("allowed_origins", "admin_emails", "invite_code_hashes", mode="before")
+    @classmethod
+    def _parse_env_list(cls, v: Any) -> list[str]:
+        if isinstance(v, list):
+            return [str(item).strip() for item in v if str(item).strip()]
+        if not isinstance(v, str):
+            return v
+
+        text = v.strip()
+        if not text:
+            return []
+
+        if text.startswith("["):
+            try:
+                parsed = json.loads(text)
+                if isinstance(parsed, list):
+                    return [str(item).strip() for item in parsed if str(item).strip()]
+            except json.JSONDecodeError:
+                pass
+
+        parts = text.replace("\n", ",").replace(";", ",").split(",")
+        return [part.strip().strip('"').strip("'") for part in parts if part.strip()]
+
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
 
     # ── Database ──────────────────────────────────────────────────────────────
@@ -79,7 +105,13 @@ class Settings(BaseSettings):
         description="Optional second admin password required via X-Admin-Password.",
     )
     invite_code_hashes: list[str] = Field(
-        default=[],
+        default=[
+            "70d2cdfd0e2190e9852063fc770c986e5e18c57bab2d1ff14a76ad675c2e3eac",
+            "ebdd971e889077ab93d69aa21a135a178ae4d3bb9d3e23bd39050fcec89d466d",
+            "c6373eb9911941ead631849b348b3e47734d1ef0ad238cf476cc9fd4cce9f570",
+            "ac379d21a7561418784f56ddfb817b3baa33465dca62805fc0f94e0b221143be",
+            "88c4ee05ab38620049abafb5f4bbd3498261db6447d2d6c93b388b1badb27eaf",
+        ],
         description="SHA-256 hashes for invite-only login codes.",
     )
 

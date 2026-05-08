@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Outlet, NavLink } from "react-router-dom";
+import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore";
 import { useThemeStore } from "../../store/themeStore";
 import { useViewMode } from "../../context/ViewModeContext";
@@ -54,6 +54,16 @@ function PhoneIcon() {
   );
 }
 
+function LogoutIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+      <path d="M16 17l5-5-5-5"/>
+      <path d="M21 12H9"/>
+    </svg>
+  );
+}
+
 /* ── Shared icon button style ───────────────────────────────────────── */
 function IconBtn({
   onClick, title, active, children,
@@ -82,8 +92,10 @@ function IconBtn({
 
 /* ── Shell ─────────────────────────────────────────────────────────── */
 export default function Shell() {
+  const navigate = useNavigate();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const isAdmin            = useAuthStore((s) => s.isAdmin());
+  const clearAuth          = useAuthStore((s) => s.clearAuth);
   const { theme, toggle }  = useThemeStore();
   const { mode, isMobile, physicallyMobile, switchTo } = useViewMode();
 
@@ -99,6 +111,12 @@ export default function Shell() {
       ? (isDesktopMode ? "auto" : "desktop")
       : (isPhoneMode   ? "auto" : "phone")
     );
+  }
+
+  function logout() {
+    clearAuth();
+    sessionStorage.removeItem("jam-admin-pass");
+    navigate("/login", { replace: true });
   }
 
   const viewIcon  = physicallyMobile
@@ -190,6 +208,9 @@ export default function Shell() {
             <IconBtn onClick={toggle} title={theme === "dark" ? "Light mode" : "Dark mode"}>
               {theme === "dark" ? <SunIcon /> : <MoonIcon />}
             </IconBtn>
+            <IconBtn onClick={logout} title="Log out">
+              <LogoutIcon />
+            </IconBtn>
             <div style={{ height: 1, width: 24, background: "var(--border)", margin: "4px 0" }} />
             <span style={{
               fontFamily: "JetBrains Mono, monospace",
@@ -226,6 +247,9 @@ export default function Shell() {
             </IconBtn>
             <IconBtn onClick={toggle} title={theme === "dark" ? "Light mode" : "Dark mode"}>
               {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+            </IconBtn>
+            <IconBtn onClick={logout} title="Log out">
+              <LogoutIcon />
             </IconBtn>
 
             {/* Hamburger */}
