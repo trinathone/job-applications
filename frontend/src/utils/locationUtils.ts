@@ -131,8 +131,10 @@ export function distanceFromPA(location: string | null): number {
   if (!location) return 9000;
   const loc = location.toLowerCase().trim();
 
-  // Remote → near PA (flexible location, treat as low distance)
-  if (/\bremote\b/.test(loc)) return 50;
+  if (isInternational(location)) return 8000;
+
+  // Generic remote → near PA. Country-specific remote is handled above.
+  if (/\b(remote|anywhere|worldwide)\b/.test(loc)) return 50;
 
   // Try city match (longest match wins)
   let bestCity: [number, number] | null = null;
@@ -183,6 +185,7 @@ export function isIndia(location: string | null): boolean {
 const INTERNATIONAL_MARKERS = [
   "united kingdom", "uk", " england", "london", "manchester", "edinburgh",
   "canada", "toronto", "vancouver", "montreal", "ottawa",
+  "alberta", "british columbia", "manitoba", "nova scotia", "ontario", "quebec",
   "germany", "berlin", "munich", "hamburg", "frankfurt",
   "france", "paris", "lyon",
   "netherlands", "amsterdam",
@@ -201,20 +204,49 @@ const INTERNATIONAL_MARKERS = [
   "china", "beijing", "shanghai", "shenzhen",
   "south korea", "seoul",
   "brazil", "são paulo", "rio de janeiro",
+  "colombia", "bogota", "bogotá",
   "mexico", "mexico city",
   "israel", "tel aviv",
   "emea", "apac", "latam", " eu ",
 ];
 
+const US_MARKERS = [
+  "united states", "usa", "u.s.", "u.s.a.", "us only", "u.s. only",
+  "remote - us", "remote us", "remote - usa", "remote usa",
+  "remote - united states", "remote united states",
+  "new york", "nyc", "san francisco", "bay area", "palo alto", "mountain view",
+  "sunnyvale", "los angeles", "seattle", "austin", "boston", "chicago",
+  "atlanta", "dallas", "houston", "denver", "philadelphia", "pittsburgh",
+  "washington dc", "washington, dc", "new jersey", "california", "texas",
+];
+
 /**
  * Returns true if the location is clearly NOT in the USA.
- * Remote or unknown locations return false (treated as potentially US).
+ * Generic remote/unknown locations return false, but country-specific remote
+ * locations like "Remote - Ireland" return true.
  */
 export function isInternational(location: string | null): boolean {
   if (!location) return false;
   const loc = location.toLowerCase();
-  if (/\bremote\b/.test(loc)) return false; // remote could be US
   return INTERNATIONAL_MARKERS.some((m) => loc.includes(m));
+}
+
+/**
+ * Returns true if a role is usable for a US-focused board.
+ * Generic remote/anywhere jobs are allowed; country-specific international
+ * remote jobs are not.
+ */
+export function isUSLocation(location: string | null): boolean {
+  if (!location) return true;
+  if (isInternational(location)) return false;
+
+  const loc = location.toLowerCase();
+  if (/\b(remote|anywhere|worldwide|global)\b/.test(loc)) return true;
+  if (US_MARKERS.some((m) => loc.includes(m))) return true;
+  if (location.match(/,\s*([A-Z]{2})(?:\s|,|$)/)) return true;
+  if (location.match(/\b([A-Z]{2})\b/)) return true;
+
+  return false;
 }
 
 export function formatDistance(miles: number): string {

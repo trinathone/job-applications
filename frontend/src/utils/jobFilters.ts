@@ -1,6 +1,6 @@
 import type { Job } from "../types/job";
 import type { FilterState } from "../store/filterStore";
-import { distanceFromPA, isInternational, isIndia } from "./locationUtils";
+import { distanceFromPA, isIndia, isUSLocation } from "./locationUtils";
 import { computeMatchScore } from "./matchScore";
 import { detectJobType } from "./jobType";
 import type { ParsedResume } from "../store/resumeStore";
@@ -40,9 +40,9 @@ export function applyFilters(
 
   // ── Country filter (replaces usaOnly boolean) ─────────────────────────────
   if (filters.country === "usa") {
-    result = result.filter((j) => !isInternational(j.location));
+    result = result.filter((j) => isUSLocation(j.location));
   } else if (filters.country === "india") {
-    result = result.filter((j) => isIndia(j.location) || /\bremote\b/i.test(j.location ?? ""));
+    result = result.filter((j) => isIndia(j.location));
   }
   // "all" → no filter
 

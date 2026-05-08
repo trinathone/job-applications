@@ -13,11 +13,14 @@ function freshnessTime(job: Job): string {
   return job.posted_at ?? job.scraped_at;
 }
 
-function postedLabel(iso: string): string {
+function postedLabel(job: Job): string {
+  const iso = job.posted_at ?? job.scraped_at;
+  const prefix = job.posted_at ? "Posted" : "Found";
   const hrs = (Date.now() - new Date(iso).getTime()) / 3_600_000;
-  if (hrs < 1)  return `${Math.round(hrs * 60)}m`;
-  if (hrs < 24) return `${Math.round(hrs)}h`;
-  return `${Math.floor(hrs / 24)}d`;
+  if (hrs < 1)  return `${prefix} ${Math.max(1, Math.round(hrs * 60))} min ago`;
+  if (hrs < 24) return `${prefix} ${Math.round(hrs)} hr ago`;
+  if (hrs < 24 * 7) return `${prefix} ${Math.floor(hrs / 24)} days ago`;
+  return `${prefix} ${new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
 }
 
 function Chip({ children, bold }: { children: React.ReactNode; bold?: boolean }) {
@@ -163,7 +166,7 @@ export default function JobCard({ job, selected, onClick }: Props) {
                 fontFamily: "JetBrains Mono, monospace", fontSize: 9,
                 color: "var(--text-4)", marginLeft: "auto",
               }}>
-                {postedLabel(visibleDate)}
+                {postedLabel(job)}
               </span>
             )}
           </div>

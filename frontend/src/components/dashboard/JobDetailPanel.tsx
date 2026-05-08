@@ -8,11 +8,14 @@ import { detectJobType, JOB_TYPE_LABEL } from "../../utils/jobType";
 
 interface Props { job: Job | null; onClose?: () => void }
 
-function timeAgo(dateStr: string) {
+function dateLabel(job: Job) {
+  const dateStr = job.posted_at ?? job.scraped_at;
+  const prefix = job.posted_at ? "Posted" : "Found";
   const hrs = (Date.now() - new Date(dateStr).getTime()) / 3_600_000;
-  if (hrs < 1)  return `${Math.round(hrs * 60)}m ago`;
-  if (hrs < 24) return `${Math.round(hrs)}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
+  if (hrs < 1)  return `${prefix} ${Math.max(1, Math.round(hrs * 60))} min ago`;
+  if (hrs < 24) return `${prefix} ${Math.round(hrs)} hr ago`;
+  if (hrs < 24 * 7) return `${prefix} ${Math.floor(hrs / 24)} days ago`;
+  return `${prefix} ${new Date(dateStr).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`;
 }
 
 function MetaCard({ label, children }: { label: string; children: React.ReactNode }) {
@@ -118,7 +121,6 @@ export default function JobDetailPanel({ job, onClose }: Props) {
   const isApplied  = appliedJobIds.has(job.id);
   const matchScore = resumeParsed ? computeMatchScore(job, resumeParsed) : null;
   const jobType    = detectJobType(job.title);
-  const visibleDate = job.posted_at ?? job.scraped_at;
 
   const salary = job.salary_min && job.salary_max
     ? `$${(job.salary_min / 1000).toFixed(0)}k – $${(job.salary_max / 1000).toFixed(0)}k / yr`
@@ -198,7 +200,7 @@ export default function JobDetailPanel({ job, onClose }: Props) {
 
           <MetaCard label="Posted">
             <span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "var(--text-3)" }}>
-              {timeAgo(visibleDate)}
+              {dateLabel(job)}
             </span>
           </MetaCard>
         </div>
