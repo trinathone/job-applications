@@ -3,7 +3,7 @@
  * (near Bellefonte, PA: 40.9176° N, 77.7383° W).
  *
  * Returns distance in miles. Lower = closer to PA.
- * Remote jobs score 50 miles (treated as nearby flexible).
+ * Generic remote jobs score 50 miles (treated as nearby flexible).
  * Unknown / international locations score 8000+ miles.
  */
 
@@ -172,12 +172,11 @@ const INDIA_MARKERS = [
 
 /**
  * Returns true if the location is clearly in India.
- * Remote or unknown locations return false.
+ * Generic remote or unknown locations return false.
  */
 export function isIndia(location: string | null): boolean {
   if (!location) return false;
   const loc = location.toLowerCase();
-  if (/\bremote\b/.test(loc)) return false;
   return INDIA_MARKERS.some((m) => loc.includes(m));
 }
 
@@ -211,7 +210,6 @@ const INTERNATIONAL_MARKERS = [
 ];
 
 const US_MARKERS = [
-  "united states", "usa", "u.s.", "u.s.a.", "us only", "u.s. only",
   "remote - us", "remote us", "remote - usa", "remote usa",
   "remote - united states", "remote united states",
   "new york", "nyc", "san francisco", "bay area", "palo alto", "mountain view",
@@ -219,6 +217,20 @@ const US_MARKERS = [
   "atlanta", "dallas", "houston", "denver", "philadelphia", "pittsburgh",
   "washington dc", "washington, dc", "new jersey", "california", "texas",
 ];
+
+const US_COUNTRY_PATTERN =
+  /(^|[^a-z])(united states|usa|u\.s\.a\.|u\.s\.|us only|u\.s\. only|us-based|u\.s\.-based|based in the us|based in us)([^a-z]|$)/;
+
+function hasLocationMarker(loc: string, marker: string): boolean {
+  const normalized = marker.trim();
+  if (!normalized) return false;
+
+  if (/^[a-z]{2,3}$/.test(normalized)) {
+    return new RegExp(`(^|[^a-z])${normalized}([^a-z]|$)`).test(loc);
+  }
+
+  return loc.includes(marker);
+}
 
 /**
  * Returns true if the location is clearly NOT in the USA.
@@ -228,23 +240,27 @@ const US_MARKERS = [
 export function isInternational(location: string | null): boolean {
   if (!location) return false;
   const loc = location.toLowerCase();
-  return INTERNATIONAL_MARKERS.some((m) => loc.includes(m));
+  return INTERNATIONAL_MARKERS.some((m) => hasLocationMarker(loc, m));
 }
 
 /**
- * Returns true if a role is usable for a US-focused board.
- * Generic remote/anywhere jobs are allowed; country-specific international
- * remote jobs are not.
+ * Returns true if a role is clearly usable for a US-focused board.
+ * Generic remote/anywhere/unknown jobs are not enough. The location must say
+ * US/United States, include a known US city, or contain a real state code.
  */
 export function isUSLocation(location: string | null): boolean {
-  if (!location) return true;
+  if (!location) return false;
   if (isInternational(location)) return false;
 
   const loc = location.toLowerCase();
-  if (/\b(remote|anywhere|worldwide|global)\b/.test(loc)) return true;
+  if (US_COUNTRY_PATTERN.test(loc)) return true;
   if (US_MARKERS.some((m) => loc.includes(m))) return true;
-  if (location.match(/,\s*([A-Z]{2})(?:\s|,|$)/)) return true;
-  if (location.match(/\b([A-Z]{2})\b/)) return true;
+
+  const stateMatch = location.match(/,\s*([A-Z]{2})(?:\s|,|$)/);
+  if (stateMatch && STATE_COORDS[stateMatch[1]]) return true;
+
+  const bareState = location.match(/\b([A-Z]{2})\b/);
+  if (bareState && STATE_COORDS[bareState[1]]) return true;
 
   return false;
 }
