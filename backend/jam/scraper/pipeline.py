@@ -313,7 +313,8 @@ async def run_full_pipeline(*, run_id: Optional[str] = None) -> PipelineStats:
 
     async with create_session() as http_session:
         # ── ATS slug scrapes ─────────────────────────────────────────────────
-        semaphore = asyncio.Semaphore(settings.scraper_max_concurrent)
+        fetch_semaphore = asyncio.Semaphore(settings.scraper_max_concurrent)
+        db_write_semaphore = asyncio.Semaphore(max(1, min(settings.db_pool_size, 3)))
 
         async def scrape_one(company: Company) -> None:
             scraper_cls = ATS_SCRAPERS.get(company.ats)
@@ -321,7 +322,7 @@ async def run_full_pipeline(*, run_id: Optional[str] = None) -> PipelineStats:
                 return
 
             scraper = scraper_cls(http_session)
-            async with semaphore:
+            async with fetch_semaphore:
                 result = await scraper.scrape(company.slug)
 
             stats.slugs_attempted += 1
@@ -338,7 +339,8 @@ async def run_full_pipeline(*, run_id: Optional[str] = None) -> PipelineStats:
                 stats.slugs_error += 1
 
             stats.jobs_fetched += len(result.jobs)
-            new, updated, new_ids = await process_scrape_result(result, redis_client)
+            async with db_write_semaphore:
+                new, updated, new_ids = await process_scrape_result(result, redis_client)
             stats.jobs_new += new
             stats.jobs_updated += updated
             stats.new_job_ids.extend(new_ids)
