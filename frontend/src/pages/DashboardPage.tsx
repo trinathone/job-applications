@@ -33,14 +33,14 @@ function MarqueeTicker({ total, newCount }: { total: number; newCount: number })
   const segments = [
     `${fmt(total)} jobs indexed`,
     newCount > 0 ? `+${newCount} new — click to load` : null,
-    "cloud scrape: daily at 12:00 UTC",
+    "cloud scrape runs daily at 12:00 UTC",
     "press A to open · S to skip",
     "7-day rolling window",
   ].filter(Boolean).join("   ·   ");
   const text = (segments + "   ·   ").repeat(6);
   return (
-    <div style={{ overflow: "hidden", flexShrink: 0, borderBottom: "1px solid var(--border)" }}>
-      <p className="animate-marquee type-mono" style={{ padding: "6px 0", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+    <div style={{ overflow: "hidden", flexShrink: 0, borderBottom: "1px solid var(--border)", background: "var(--bg)" }}>
+      <p className="animate-marquee type-mono" style={{ padding: "8px 0", fontSize: 10, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--text-3)" }}>
         {text}
       </p>
     </div>
@@ -201,6 +201,7 @@ export default function DashboardPage() {
 
   // Mobile floating sidebar
   const [floatOpen, setFloatOpen] = useState(false);
+  const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "var(--bg)", overflow: "hidden" }}>
@@ -377,7 +378,11 @@ export default function DashboardPage() {
               jobs={filteredJobs}
               loading={isLoading}
               onOpenDetails={() => {
-                if (!isMobile) setPanelOpen(true);
+                if (isMobile) {
+                  setMobileDetailOpen(true);
+                } else {
+                  setPanelOpen(true);
+                }
               }}
             />
           </div>
@@ -438,8 +443,43 @@ export default function DashboardPage() {
         )}
       </div>
 
+      {isMobile && mobileDetailOpen && selectedJob && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 65,
+            background: "rgba(0,0,0,0.72)",
+            display: "flex",
+            alignItems: "flex-end",
+          }}
+          onClick={() => setMobileDetailOpen(false)}
+        >
+          <div
+            className="fade-up"
+            style={{
+              width: "100%",
+              maxHeight: "86svh",
+              borderTopLeftRadius: 18,
+              borderTopRightRadius: 18,
+              overflow: "hidden",
+              background: "var(--bg)",
+              borderTop: "1px solid var(--border-2)",
+              boxShadow: "0 -24px 80px rgba(0,0,0,0.72)",
+            }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <JobDetailPanel
+              key={selectedJob.id}
+              job={selectedJob}
+              onClose={() => setMobileDetailOpen(false)}
+            />
+          </div>
+        </div>
+      )}
+
       {/* ── Floating sidebar button (mobile) ─────────────────────────── */}
-      <div style={{ position: "fixed", bottom: 20, right: 20, zIndex: 40, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10 }}>
+      <div style={{ position: "fixed", bottom: 20, left: 20, zIndex: 40, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 10 }}>
         {floatOpen && (
           <div className="fade-in" style={{
             width: 256, borderRadius: 14, overflow: "hidden",

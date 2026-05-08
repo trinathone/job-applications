@@ -1,14 +1,9 @@
 """
 Ashby ATS scraper.
 
-Ashby exposes a public non-user GraphQL API:
-  POST https://api.ashbyhq.com/posting-api/job-board/{slug}
-  Content-Type: application/json
+Ashby's public REST endpoint returns job listings without auth:
+  GET https://api.ashbyhq.com/posting-api/job-board/{slug}
 
-GraphQL query returns job listings with full details including compensation.
-Falls back to REST endpoint if GraphQL fails.
-
-REST endpoint: https://api.ashbyhq.com/posting-api/job-board/{slug}
 Response: { "jobs": [...], "jobBoard": {...} }
 """
 from __future__ import annotations
@@ -18,34 +13,9 @@ import re
 from datetime import datetime, timezone
 from typing import Any
 
-import aiohttp
-
 from jam.scraper.base import BaseScraper, RawJob
 
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
-
-GRAPHQL_QUERY = """
-query JobBoard($boardHandle: String!) {
-  jobBoard: jobPostingsForBoard(boardHandle: $boardHandle) {
-    jobPostings {
-      id
-      title
-      locationName
-      isRemote
-      externalLink
-      publishedDate
-      descriptionHtml
-      compensationTierSummary
-      compensationTiers {
-        minValue
-        maxValue
-        currency
-      }
-    }
-  }
-}
-"""
-
 
 def _strip_html(text: str) -> str:
     if not text:
@@ -129,34 +99,3 @@ class AshbyScraper(BaseScraper):
                 continue
 
         return results
-
-    async def fetch(self, slug: str) -> tuple[Any, Any, int]:
-        """
-        Override fetch to try GraphQL first, fall back to REST.
-        """
-        from jam.scraper.error_taxonomy import ErrorKind
-
-        graphql_url = f"https://api.ashbyhq.com/posting-api/non-user-graphql"
-
-        async with self._limiter:
-            try:
-                resp = await self._session.post(
-                    graphql_url,
-                    json={"query": GRAPHQL_QUERY, "variables": {"boardHandle": slug}},
-                    headers={"Content-Type": "application/json"},
-                )
-                if resp.status == 200:
-                    data = await resp.json(content_type=None)
-                    if data and "data" in data:
-                        # Flatten GraphQL structure to match REST shape
-                        postings = (
-                            (data.get("data") or {})
-                            .get("jobBoard", {})
-                            .get("jobPostings", [])
-                        )
-                        return {"jobs": postings}, ErrorKind.OK, 200
-            except Exception:
-                pass  # Fall through to REST
-
-        # REST fallback
-        return await super().fetch(slug)

@@ -1,6 +1,6 @@
 """
 Admin endpoints — user list and activity.
-Only accessible to users whose email is in ADMIN_EMAILS (set in .env).
+Only accessible with an email in ADMIN_EMAILS plus ADMIN_PANEL_PASSWORD.
 """
 from __future__ import annotations
 
@@ -12,9 +12,9 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from jam.api.deps import get_current_user, get_db
+from jam.api.deps import get_db
 from jam.config import settings
-from jam.models import Application, User
+from jam.models import Application, User, VisitorLead
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -31,16 +31,26 @@ class UserSummary(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class VisitorSummary(BaseModel):
+    id: int
+    name: str
+    email: str
+    role: str
+    joined: datetime
+
+    model_config = {"from_attributes": True}
+
+
 async def _require_admin(
-    current_user: User = Depends(get_current_user),
+    x_admin_email: str | None = Header(default=None),
     x_admin_password: str | None = Header(default=None),
-) -> User:
+) -> None:
     admins = {e.strip().lower() for e in settings.admin_emails if e.strip()}
-    if not admins or current_user.email.lower() not in admins:
+    email = (x_admin_email or "").strip().lower()
+    if not admins or email not in admins:
         raise HTTPException(status_code=403, detail="Admin access required.")
     if settings.admin_panel_password and x_admin_password != settings.admin_panel_password:
         raise HTTPException(status_code=403, detail="Admin password required.")
-    return current_user
 
 
 @router.get("/users", response_model=list[UserSummary])
@@ -71,4 +81,27 @@ async def list_users(
             last_applied=row.last_applied,
         )
         for row in rows
+    ]
+
+
+@router.get("/visitors", response_model=list[VisitorSummary])
+async def list_visitors(
+    db: AsyncSession = Depends(get_db),
+    _admin: None = Depends(_require_admin),
+) -> list[VisitorSummary]:
+    result = await db.execute(
+        select(VisitorLead)
+        .order_by(VisitorLead.created_at.desc())
+        .limit(500)
+    )
+    visitors = result.scalars().all()
+    return [
+        VisitorSummary(
+            id=v.id,
+            name=v.name,
+            email=v.email,
+            role=v.role,
+            joined=v.created_at,
+        )
+        for v in visitors
     ]

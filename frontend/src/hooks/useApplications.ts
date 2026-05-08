@@ -3,6 +3,7 @@ import { listApplications, upsertApplication } from "../api/applications";
 import { useJobStore } from "../store/jobStore";
 import { useAuthStore } from "../store/authStore";
 import type { ApplicationStatus } from "../types/application";
+import type { Job } from "../types/job";
 
 export function useApplications() {
   const token = useAuthStore((s) => s.token);
@@ -20,10 +21,10 @@ export function useApplyJob() {
   const token        = useAuthStore((s) => s.token);
 
   return useMutation({
-    mutationFn: ({ jobId, status }: { jobId: number; status: ApplicationStatus }) =>
-      token ? upsertApplication(jobId, status) : Promise.resolve(null),
+    mutationFn: ({ job, status }: { job: Job; status: ApplicationStatus }) =>
+      token ? upsertApplication(job.id, status) : Promise.resolve(null),
     onSuccess: (_data, vars) => {
-      markApplied(vars.jobId);
+      markApplied(vars.job);
       if (token) qc.invalidateQueries({ queryKey: ["applications"] });
       nextJob();
     },

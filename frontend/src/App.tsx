@@ -11,7 +11,9 @@ import NotFoundPage from "./pages/NotFoundPage";
 import ResumePage from "./pages/ResumePage";
 import ResumeBuilderPage from "./pages/ResumeBuilderPage";
 import SupportPage from "./pages/SupportPage";
+import AppliedPage from "./pages/AppliedPage";
 import AdminPage from "./pages/AdminPage";
+import FloatingStatus from "./components/status/FloatingStatus";
 import { useJobStore } from "./store/jobStore";
 import { useAuthStore } from "./store/authStore";
 import { useSkipJobApi } from "./hooks/useApplications";
@@ -164,6 +166,7 @@ function AppInner() {
         <NoiseOverlay />
         <SimpleCursor />
         <GlobalSkipManager />
+        <FloatingStatus />
 
         <Routes>
           <Route path="/" element={<LandingPage />} />
@@ -172,6 +175,7 @@ function AppInner() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/resume" element={<ResumePage />} />
             <Route path="/resume/builder" element={<ResumeBuilderPage />} />
+            <Route path="/applied" element={<AppliedPage />} />
             <Route path="/support" element={<SupportPage />} />
             <Route path="/admin" element={<AdminPage />} />
           </Route>

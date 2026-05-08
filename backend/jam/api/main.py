@@ -44,6 +44,13 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(OtpCode.__table__.create, checkfirst=True)
         await conn.run_sync(VisitorLead.__table__.create, checkfirst=True)
 
+    from jam.database import db_session
+    from jam.seeds.loader import ensure_company_seeds
+
+    async with db_session() as session:
+        seed_count = await ensure_company_seeds(session)
+
+    logger.info("company_seeds_ready", count=seed_count)
     logger.info("app_startup", environment=settings.environment)
 
     yield

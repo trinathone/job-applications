@@ -150,6 +150,18 @@ async def _get_or_create_company(
     return result.scalar_one()
 
 
+async def _find_company_id(
+    session: AsyncSession,
+    slug: str,
+    ats: str,
+) -> Optional[int]:
+    """Return the seeded company id even when the scrape returned no jobs."""
+    result = await session.execute(
+        select(Company.id).where(Company.slug == slug, Company.ats == ats)
+    )
+    return result.scalar_one_or_none()
+
+
 async def _log_scrape_run(
     session: AsyncSession,
     result: ScrapeResult,
@@ -205,18 +217,40 @@ async def process_scrape_result(
 
     async with db_session() as session:
         # Get or create company
-        company_id: Optional[int] = None
+        company_id: Optional[int] = await _find_company_id(session, result.slug, result.ats)
         if result.jobs:
             first = result.jobs[0]
-            company_id = await _get_or_create_company(
-                session, first.company_slug, result.ats, first.company_name
-            )
+            if company_id is None:
+                company_id = await _get_or_create_company(
+                    session, first.company_slug, result.ats, first.company_name
+                )
 
         # Mark dead slug
         if result.error_kind == ErrorKind.DEAD and company_id:
             await session.execute(
                 text("""
-                    UPDATE companies SET active=false, last_fail_at=now()
+                    UPDATE companies
+                    SET active=false, last_fail_at=now(),
+                        consecutive_fails=consecutive_fails + 1
+                    WHERE id=:cid
+                """),
+                {"cid": company_id},
+            )
+        elif result.status in ("ok", "ok_empty") and company_id:
+            await session.execute(
+                text("""
+                    UPDATE companies
+                    SET last_success_at=now(), consecutive_fails=0
+                    WHERE id=:cid
+                """),
+                {"cid": company_id},
+            )
+        elif result.error_kind and company_id:
+            await session.execute(
+                text("""
+                    UPDATE companies
+                    SET last_fail_at=now(),
+                        consecutive_fails=consecutive_fails + 1
                     WHERE id=:cid
                 """),
                 {"cid": company_id},

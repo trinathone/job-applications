@@ -232,14 +232,26 @@ export default function JobDetailPanel({ job, onClose }: Props) {
 
         {/* ── Apply flow ─────────────────────────────────────────────────── */}
         {isApplied ? (
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "center",
-            gap: 8, padding: "14px 0",
-            fontFamily: "JetBrains Mono, monospace",
-            fontSize: 13, fontWeight: 600, color: "var(--text-2)",
-            border: "1px solid var(--border)", borderRadius: 10,
-          }}>
-            ✓ Applied
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "center",
+              gap: 8, padding: "14px 0",
+              fontFamily: "JetBrains Mono, monospace",
+              fontSize: 13, fontWeight: 600, color: "var(--text-2)",
+              border: "1px solid var(--border)", borderRadius: 10,
+              background: "var(--surface)",
+            }}>
+              ✓ Saved to applied jobs
+            </div>
+            <a
+              href={job.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-primary"
+              style={{ width: "100%", justifyContent: "center", fontSize: 14, padding: "12px 18px" }}
+            >
+              Reopen application ↗
+            </a>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -256,7 +268,7 @@ export default function JobDetailPanel({ job, onClose }: Props) {
 
             {/* Secondary: mark as applied inside the app */}
             <button
-              onClick={() => applyJob({ jobId: job.id, status: "applied" })}
+              onClick={() => applyJob({ job, status: "applied" })}
               disabled={isPending}
               className="btn-ghost"
               style={{ width: "100%", justifyContent: "center", fontSize: 13, padding: "11px 18px" }}
